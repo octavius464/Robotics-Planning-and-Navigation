@@ -6,17 +6,15 @@ import lejos.hardware.port.SensorPort;
 //it is trying to reach the black line to a greater extent
 public class SensorMotor {
 	public static void main(String args[]){
-		int RotateAngle = 1;
-		int increment = 10;
-		int direction = 1;
-		boolean rotating = false;
+		int RotateAngle = 0;
+		int increment = 5;
 		EV3ColorSensor colorSensor = new EV3ColorSensor(SensorPort.S4);
 		while(true){			
 			int color = colorSensor.getColorID(); //white=6,black=7
 			System.out.println(colorSensor.getColorID());
 			if(color == 7){
-				Motor.A.setSpeed(360);// 2 RPM
-				Motor.C.setSpeed(360);
+				Motor.A.setSpeed(50);// 2 RPM
+				Motor.C.setSpeed(50);
 				Motor.A.forward();
 				Motor.C.forward();
 			}
@@ -24,13 +22,14 @@ public class SensorMotor {
 				while(color != 7){
 					color = colorSensor.getColorID();
 					RotateAngle += increment;
+					RotateAngle = RotateAngle%360;
 					Motor.A.rotateTo(RotateAngle);
-					Motor.C.rotateTo(-1*RotateAngle);
+				//	Motor.C.rotateTo(-RotateAngle);
 					if(color == 7){
 						break;
 					}
 				}
-				
+				RotateAngle = 0;
 				
 			}
 			try {
