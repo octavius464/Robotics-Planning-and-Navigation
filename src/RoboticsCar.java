@@ -50,8 +50,8 @@ public class RoboticsCar {
 	    }*/
 		
 		//PID Control
-	    float Kp = 150;
-	    float Ki = 10;
+	    float Kp = 360;
+	    float Ki = 0;
 	    float Kd = 0;
 	    float lastError = 0;
 	    float integral = 0;
@@ -59,17 +59,26 @@ public class RoboticsCar {
 			reflectedLightMode.fetchSample(reflectedLightSample, 0);	
 			float measuredValue = reflectedLightSample[reflectedLightMode.sampleSize()-1];
 		    float error = midPointValue -measuredValue;
+		    
 		    integral +=error;
+		    if(error > -0.02 &&error < 0.02){
+		    	
+		    	integral = 0;
+		    }
 		    float derivative = error - lastError;
 		    lastError = error;
 		    
 			float correction = Kp *error + Ki*integral + Kd*derivative;
 			// Turn each motor according to the correction
-			Motor.A.setSpeed(100+correction); 
+			Motor.A.setSpeed(150+correction); 
 			Motor.A.forward();
-			Motor.C.setSpeed(100-correction);
+			Motor.C.setSpeed(150-correction);
 			Motor.C.forward();
-			
+			try{
+				Thread.sleep(15);
+			} catch (InterruptedException e){
+				e.printStackTrace();
+			}
 		    // If this doesn't work, can try rotate,			
 	    }
 	    
