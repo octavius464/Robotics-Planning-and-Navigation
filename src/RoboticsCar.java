@@ -22,6 +22,8 @@ public class RoboticsCar {
 		float midPointValue = (white-black)/2 + black;
 	    boolean hasObstacle = false;
 	    float minObstDis = 100 ; // This is the distance when the car starts avoiding obstacle (Need to find out what value)
+	    float defaultObstDis = 400; // The measurement when there is no obstacle in front
+	    // We have to find out the above two measurements , since i dont have what the scale or unit is.
 		
 		//PI Control
 	    float Kp = 360;
@@ -34,7 +36,7 @@ public class RoboticsCar {
 				reflectedLightMode.fetchSample(reflectedLightSample, 0);	
 				float measuredValue = reflectedLightSample[reflectedLightMode.sampleSize()-1];
 			    float error = midPointValue - measuredValue;	    
-			    integral +=error;
+			    integral += error;
 			    if(error > -0.02 &&error < 0.02){ // Wind down integral term 	    	
 			    	integral = 0;
 			    }
@@ -56,7 +58,35 @@ public class RoboticsCar {
 	    	}
 	    	
 	    	if(hasObstacle){             // Algorithm for obstacle avoidance
-	    		
+	    		/* Strategy: PID control for maintaining an optimal distance to object and go around it, 
+	    		 * and then stop this algorithm when the car detects the black line again.
+	    		 */
+	    		float Kp_U = 10;
+	    		while(true){
+	    			distanceMode.fetchSample(distanceSample, 0);  
+			    	obstacleDistance = distanceSample[distanceMode.sampleSize()-1];
+			    	float distanceError = minObstDis - obstacleDistance;
+			    	float correctionDistance = Kp_U * distanceError;
+			    	// Differential drive according to correction to maintain an optimal distance to object
+					Motor.A.setSpeed(100 + correctionDistance); 
+					Motor.A.forward();
+					Motor.C.setSpeed(100 - correctionDistance);
+					Motor.C.forward();
+					
+					reflectedLightMode.fetchSample(reflectedLightSample, 0);	
+					float measuredLightValue = reflectedLightSample[reflectedLightMode.sampleSize()-1];
+					if(measuredLightValue < white - 3 && obstacleDistance > defaultObstDis-50){
+						hasObstacle = false;
+						break;
+					}
+			    	
+			    	try{
+						Thread.sleep(200);
+					} catch (InterruptedException e){
+						e.printStackTrace();
+					}
+	    			
+	    		}
 	    		
 	    		
 	    		
