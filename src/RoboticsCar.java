@@ -21,7 +21,7 @@ public class RoboticsCar {
 		float black = (float)0.08;
 		float midPointValue = (white-black)/2 + black;
 	    boolean hasObstacle = false;
-	    float minObstDis = 100 ;
+	    float minObstDis = 100 ; // This is the distance when the car starts avoiding obstacle (Need to find out what value)
 		
 		//PI Control
 	    float Kp = 360;
