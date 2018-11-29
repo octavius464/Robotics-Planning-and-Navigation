@@ -19,7 +19,8 @@ public class Sensor {
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}	
-	    } */
+	    } 
+		
 		
 		EV3UltrasonicSensor ultrasonicSensor = new EV3UltrasonicSensor(SensorPort.S2);
 		ultrasonicSensor.enable();
@@ -36,7 +37,7 @@ public class Sensor {
 				e.printStackTrace();
 			}
 			
-			/*while ( < float(0.03) &&  > float(0.02)){
+			while ( < float(0.03) &&  > float(0.02)){
 				Motor.A.setSpeed(50);
 				Motor.A.forward();
 				Motor.C.setSpeed(10);
@@ -53,6 +54,7 @@ public class Sensor {
 		
 		
 		
+		
 	}
 	
-}
+
