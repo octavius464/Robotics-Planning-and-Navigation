@@ -45,11 +45,13 @@ public class RoboticsCar {
 	    float defaultObstDis = (float) 0.400; // The measurement when there is no obstacle in front
 	    
 		//PI Control
-	    float Kp = 360;
+	    float Kp = 345;
 	    float Ki = (float) 0.001;
-	    float Kd = 0;
+	    float Kd = (float)0.01;
 	    float lastError = 0;
 	    float integral = 0;
+	    float motorBrotation = 0;
+	    float motorBdirection = 1;
 	    main:while(canStart){
 	    	if (!hasObstacle){               // Algorithm for line following
 				reflectedLightMode.fetchSample(reflectedLightSample, 0);	
@@ -64,10 +66,20 @@ public class RoboticsCar {
 				float correction = Kp *error + Ki*integral + Kd*derivative;
 				
 				// Differential drive according to correction
-				Motor.A.setSpeed(150+correction); 
+				Motor.A.setSpeed(155+correction); 
 				Motor.A.forward();
-				Motor.C.setSpeed(150-correction);
+				Motor.C.setSpeed(155-correction);
 				Motor.C.forward();
+				
+				if(motorBrotation >= 45){
+					motorBdirection *= -1;
+					motorBrotation = motorBrotation * motorBdirection;
+				}
+				if(motorBrotation >= 45){
+					motorBdirection *= -1;
+					motorBrotation = motorBrotation * motorBdirection;
+				}
+				Motor.B.rotateTo()
 				
 				while(true){
 					if(colorSensor.getColorID() == 0){
@@ -124,9 +136,9 @@ public class RoboticsCar {
 			    	}
 		    	}
 		    	System.out.println("Done looking");
+		    	
 		    	// Circle around the obstacle
 		    	float Kp_obstacle = 410; 
-
 		    	obstAvoidloop: while(true){
 		    		distanceMode.fetchSample(distanceSample, 0);   // Ultrasonic sensing
 			    	float disToObstacle = distanceSample[distanceMode.sampleSize()-1];
@@ -138,20 +150,11 @@ public class RoboticsCar {
 			    		error_to_obstacle = (float)-0.05;
 			    	}
 			    	float rotate_correction = Kp_obstacle * error_to_obstacle;
-			    	//if(50 - rotate_correction > 0){
 				    Motor.A.setSpeed(100 + rotate_correction); 
 					Motor.A.forward();
-			    	/*}else{
-			    		Motor.A.setSpeed(0); 
-						Motor.A.forward();
-			    	}*/
-			    	//if(50 + rotate_correction > 0){
 					Motor.C.setSpeed(100 - rotate_correction);
 					Motor.C.forward();
-			    	/*}else{
-			    		Motor.C.setSpeed(0);
-						Motor.C.forward();
-			    	}*/
+					
 					reflectedLightMode.fetchSample(reflectedLightSample, 0);	
 					float measuredValue = reflectedLightSample[reflectedLightMode.sampleSize()-1];
 					if(measuredValue < white-0.05){
