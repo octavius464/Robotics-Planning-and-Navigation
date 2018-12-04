@@ -9,7 +9,11 @@ import lejos.hardware.port.SensorPort;
 
 //Motor functions: forward(), stop(), rotateTo(),rotate(), setSpeed()
 public class RoboticsCar {
-	public static void main(String args[]){
+	static boolean hasObstacle = false;
+	static float carOrientation;
+	static float offsetAngleToRotate;
+	
+	public static void main(String args[]) {
 		
 		EV3ColorSensor colorSensor = new EV3ColorSensor(SensorPort.S4);  // Set up Color Sensor
 		SensorMode reflectedLightMode = colorSensor.getRedMode();
@@ -24,6 +28,11 @@ public class RoboticsCar {
 		gyroSensor.reset();
 		SampleProvider angleMode = gyroSensor.getAngleMode();
 		float[] angleSample = new float[angleMode.sampleSize()];
+		angleMode.fetchSample(angleSample, 0);   // Gyro sensing
+		carOrientation = angleSample[angleMode.sampleSize()-1];
+		
+		MotorBThread motorBThread = new MotorBThread();
+		motorBThread.start();
 		
 		boolean canStart = false;
 		while(true){
@@ -40,18 +49,17 @@ public class RoboticsCar {
 		float white =(float)0.66;
 		float black = (float)0.08;
 		float midPointValue = (white-black)/2 + black;
-	    boolean hasObstacle = false;
-	    float minObstDis = (float) 0.130; //0.130 ; // This is the distance when the car starts avoiding obstacle (Need to find out what value)
+	    
+	    float minObstDis = (float) 0.100; //0.130 ; // This is the distance when the car starts avoiding obstacle (Need to find out what value)
 	    float defaultObstDis = (float) 0.400; // The measurement when there is no obstacle in front
 	    
 		//PI Control
 	    float Kp = 345;
 	    float Ki = (float) 0.001;
-	    float Kd = (float)0.01;
+	    float Kd = (float)0.0;
 	    float lastError = 0;
 	    float integral = 0;
-	    float motorBrotation = 0;
-	    float motorBdirection = 1;
+	    
 	    main:while(canStart){
 	    	if (!hasObstacle){               // Algorithm for line following
 				reflectedLightMode.fetchSample(reflectedLightSample, 0);	
@@ -71,19 +79,11 @@ public class RoboticsCar {
 				Motor.C.setSpeed(155-correction);
 				Motor.C.forward();
 				
-				if(motorBrotation >= 45){
-					motorBdirection *= -1;
-					motorBrotation = motorBrotation * motorBdirection;
-				}
-				if(motorBrotation >= 45){
-					motorBdirection *= -1;
-					motorBrotation = motorBrotation * motorBdirection;
-				}
-				Motor.B.rotateTo()
+				//rotate the ultrasonic sensor during line following to look for obstacle
 				
-				while(true){
+				
+				while(true){					
 					if(colorSensor.getColorID() == 0){
-						System.out.println(colorSensor.getColorID());
 						Motor.A.stop();
 						Motor.C.stop();
 						continue;
@@ -91,7 +91,8 @@ public class RoboticsCar {
 						break;
 					}
 				}
-	    	}
+				
+	    	} // end of line following
 	    	
 	    	distanceMode.fetchSample(distanceSample, 0);   // Obstacle detection
 	    	float obstacleDistance = distanceSample[distanceMode.sampleSize()-1];
@@ -107,9 +108,10 @@ public class RoboticsCar {
 				//rotate the car to 45 degrees
 		    	while(true){ 
 		    		angleMode.fetchSample(angleSample, 0);   // Gyro sensing
-			    	float rotatedOrientation = angleSample[angleMode.sampleSize()-1];
-			    	System.out.println(rotatedOrientation);
-			    	if( rotatedOrientation < -60.1){ // for rotating to 45 degrees
+		    		carOrientation = angleSample[angleMode.sampleSize()-1];
+			    	System.out.println(carOrientation);
+			    	if( carOrientation < -90.1){ // testing 4: for rotating to 60 degrees, -60.1+ offsetAngleToRotate
+			    		//is it quick enough to get the value, and find out which direction
 			    		Motor.A.stop();
 			    		Motor.C.stop();
 						break;
@@ -122,19 +124,19 @@ public class RoboticsCar {
 		    	}
 		    	
 		    	//rotate ultrasonic sensor to face the obstacle
-		    	int angleToRotateForUS = -40;
-		    	Motor.B.rotateTo(-40);
+		    	/*int angleToRotateForUS = -90;
+		    	Motor.B.rotateTo(angleToRotateForUS);
 		    	while(true){ 
 		    		distanceMode.fetchSample(distanceSample, 0);   // Obstacle detection
 			    	float disToObstacle = distanceSample[distanceMode.sampleSize()-1];
-			    	if(disToObstacle >minObstDis-0.03 && disToObstacle < minObstDis+0.03){
+			    	if(disToObstacle >minObstDis-0.05 && disToObstacle < minObstDis+0.05){
 			    		break;
 			    		
 			    	}else{
 			    		angleToRotateForUS=angleToRotateForUS - 5;
 				    	Motor.B.rotateTo(angleToRotateForUS);
 			    	}
-		    	}
+		    	}*/
 		    	System.out.println("Done looking");
 		    	
 		    	// Circle around the obstacle
@@ -183,5 +185,38 @@ public class RoboticsCar {
 			}			
 	    }
 	    
+	    
+	    
+	    
 	}
+	
+	static class MotorBThread extends Thread
+    {
+         public void run(){
+             try{
+            	 float motorBrotation = 0;
+         	     float motorBdirection = 1; 
+         	     while(true){ //testing
+                 while (!isInterrupted() && !hasObstacle){
+                	if(motorBrotation >= 30 || motorBrotation <= -30){
+     					motorBdirection *= -1;
+     				}				
+     				motorBrotation = motorBrotation +  motorBdirection*10;
+     				Motor.B.rotateTo( (int) motorBrotation);
+     				offsetAngleToRotate = Motor.B.getLimitAngle();
+                 }
+                 //testing 4:offsetAngleToRotate = Motor.B.getLimitAngle();
+                 //testing 2: for getting Motor B back to aligned position to car after avoiding obstacle
+                 Motor.B.rotateTo(-90);
+                 while(hasObstacle){
+                	 //rotate ultrasonic sensor while rotating around obstacle?
+                 }
+                 Thread.sleep(3000);
+                 Motor.B.rotateTo( (int) carOrientation);
+         	     }
+             }catch (InterruptedException e) {System.out.println(e);}
+             catch (Exception e) {System.out.println(e.toString());}
+         }
+    }
+	
 }
