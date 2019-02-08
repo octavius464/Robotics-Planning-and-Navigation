@@ -1,8 +1,12 @@
+import lejos.hardware.Sound;
 import lejos.hardware.motor.EV3LargeRegulatedMotor;
 import lejos.hardware.port.MotorPort;
 import lejos.hardware.port.SensorPort;
 import lejos.hardware.sensor.EV3ColorSensor;
+import lejos.hardware.sensor.EV3GyroSensor;
+import lejos.hardware.sensor.EV3TouchSensor;
 import lejos.robotics.RegulatedMotor;
+import lejos.robotics.SampleProvider;
 import lejos.utility.Delay;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -45,8 +49,16 @@ public class RobotController {
 		Delay.msDelay(1000000);	
 		
 		//Path Planning
-		//Set up all the nodes, build a edgeMap with mapping a pair of nodes to a float edistance 
 		
+		//Navigate to goal
+		
+		/* TODO test robot
+		//Enter into cave, touch wall, make a beep sound, detect color, navigate out back to goal position
+		robot.rotateToEntrance();
+		robot.moveToWallAndBeep();
+		int colorAtWall = robot.getColorMeasurement();
+		robot.moveBackToGoal();
+		*/
 		
 	} //end of main
 	
@@ -59,14 +71,41 @@ class Robot {
 	static double WHEEL_RADIUS = 0.015;
 	int localizedPos;
 	EV3ColorSensor colorSensor;
+	
+	EV3GyroSensor gyroSensor;
+	SampleProvider angleMode;
+	float[] angleSample;
+	float carOrientation;
+	
+	EV3TouchSensor touchSensor;
+	SampleProvider touchMode;
+	float[] touchSample;
+	float measuredTouch;
+	
 	RegulatedMotor mA;
 	RegulatedMotor mC;
 	
+	
+	
 	public Robot(){
 		colorSensor = new EV3ColorSensor(SensorPort.S4);
+		gyroSensor = new EV3GyroSensor(SensorPort.S2);
+		touchSensor = new EV3TouchSensor(SensorPort.S1);
+		
+		gyroSensor.reset();
+		angleMode = gyroSensor.getAngleMode();
+		angleSample = new float[angleMode.sampleSize()];
+		angleMode.fetchSample(angleSample, 0); // Orientation sensing
+		carOrientation = angleSample[angleMode.sampleSize() - 1];
+		
+		touchMode = touchSensor.getTouchMode();
+		touchSample = new float[touchMode.sampleSize()];
+		touchMode.fetchSample(touchSample, 0);
+		measuredTouch = touchSample[touchMode.sampleSize() - 1];
+		
 		mA = new EV3LargeRegulatedMotor(MotorPort.A);
 		mC = new EV3LargeRegulatedMotor(MotorPort.C);
-		mA.synchronizeWith(new RegulatedMotor[] { mC });
+		mA.synchronizeWith(new RegulatedMotor[] { mC });		
 	}
 	
 	/**
@@ -102,6 +141,61 @@ class Robot {
 			mA.backward();
 			mC.backward();
 		}
+		mA.endSynchronization();
+
+		Delay.msDelay((long)duration);
+		mA.startSynchronization();
+		mA.stop();
+		mC.stop();
+		mA.endSynchronization();
+	}
+	
+	public void rotateToEntrance(){
+		angleMode.fetchSample(angleSample, 0);
+		carOrientation = angleSample[angleMode.sampleSize() - 1];
+		mA.startSynchronization();
+		mA.setSpeed(180);
+		mC.setSpeed(180);
+		while(!(carOrientation > -0.1) || !(carOrientation < 0.1)){
+			mA.forward();
+			mC.backward();
+		}
+		mA.endSynchronization();
+		mA.startSynchronization();
+		mA.stop();
+		mC.stop();
+		mA.endSynchronization();
+	}
+	
+	public void moveToWallAndBeep(){
+		touchMode.fetchSample(touchSample, 0);
+		measuredTouch = touchSample[touchMode.sampleSize() - 1];
+		
+		mA.startSynchronization();
+		mA.setSpeed(180);
+		mC.setSpeed(180);
+		while(measuredTouch != 1){
+			mA.forward();
+			mC.forward();
+		}
+		Sound.beep();
+		mA.endSynchronization();
+		
+		mA.startSynchronization();
+		mA.stop();
+		mC.stop();
+		mA.endSynchronization();
+	}
+	
+	public void moveBackToGoal(){ //TODO measure distance of going back to goal position
+		double meterspersecond = 2.0*Math.PI*WHEEL_RADIUS/2.0;
+		double duration = (0.0085 /meterspersecond) * 1000.0; //move forward 1.7cm/cell of the array each iteration
+
+		mA.startSynchronization();
+		mA.setSpeed(180);
+		mC.setSpeed(180);
+		mA.backward();
+		mC.backward();	
 		mA.endSynchronization();
 
 		Delay.msDelay((long)duration);
@@ -278,7 +372,7 @@ class AStarPlanner{
 		plan();
 	}
 	
-	private void generateNeighbours(){ //TODO test
+	private void generateNeighbours(){ //TODO test code
 		int maxX = map[0].length; 
 		int maxY = map.length;
 		for(int y=0; y < maxY; ++y){
