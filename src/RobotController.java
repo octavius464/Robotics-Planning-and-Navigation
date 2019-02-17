@@ -10,6 +10,7 @@ import lejos.robotics.SampleProvider;
 import lejos.utility.Delay;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 
 
 public class RobotController {
@@ -19,7 +20,7 @@ public class RobotController {
 		Robot robot = new Robot();
 		Localization robotLocalization = new Localization(74); //multiples of 37
 		//each array distance is 1.7cm, so total length is 37*1.7=62.9cm
-		
+		/*
 		int localizedPos = -1;
 		int direction = 0; // 0:moving forward, 1:moving backward, move forward initially
 		
@@ -47,18 +48,27 @@ public class RobotController {
 		}
 		
 		Delay.msDelay(1000000);	
+		*/ 
+		
 		
 		//Path Planning
+		MapGrid mapGrid = new MapGrid(new int[][] {{0,0,0,0},{0,1,1,0},{0,1,1,0},{0,0,0,0}},new int[]{0,0} ,new int[]{3,3});
+		
+		AStarPlanner planner = new AStarPlanner(mapGrid.getStartingNode(), mapGrid.getGoalNode(), mapGrid.getMap());
+		ArrayList<int[]> path = planner.getPath();
+		ArrayList<int[]> wayPoints = planner.convertPathToWaypoints(path); 
 		
 		//Navigate to goal
+		robot.navigateToGoal(wayPoints,mapGrid.getCellSize()); 
 		
-		/* TODO test robot
 		//Enter into cave, touch wall, make a beep sound, detect color, navigate out back to goal position
 		robot.rotateToEntrance();
 		robot.moveToWallAndBeep();
 		int colorAtWall = robot.getColorMeasurement();
 		robot.moveBackToGoal();
-		*/
+		
+		//Navigate to starting point
+		
 		
 	} //end of main
 	
@@ -153,14 +163,17 @@ class Robot {
 	public void rotateToEntrance(){
 		angleMode.fetchSample(angleSample, 0);
 		carOrientation = angleSample[angleMode.sampleSize() - 1];
-		mA.startSynchronization();
+		//mA.startSynchronization();
 		mA.setSpeed(180);
 		mC.setSpeed(180);
-		while(!(carOrientation > -0.1) || !(carOrientation < 0.1)){
+		while(!(carOrientation > -46.9) || !(carOrientation < -45.1)){
 			mA.forward();
 			mC.backward();
+			angleMode.fetchSample(angleSample, 0);
+			carOrientation = angleSample[angleMode.sampleSize() - 1];
+			System.out.println(carOrientation);
 		}
-		mA.endSynchronization();
+		//mA.endSynchronization();
 		mA.startSynchronization();
 		mA.stop();
 		mC.stop();
@@ -171,15 +184,17 @@ class Robot {
 		touchMode.fetchSample(touchSample, 0);
 		measuredTouch = touchSample[touchMode.sampleSize() - 1];
 		
-		mA.startSynchronization();
+		//mA.startSynchronization();
 		mA.setSpeed(180);
 		mC.setSpeed(180);
 		while(measuredTouch != 1){
 			mA.forward();
 			mC.forward();
+			touchMode.fetchSample(touchSample, 0);
+			measuredTouch = touchSample[touchMode.sampleSize() - 1];
 		}
 		Sound.beep();
-		mA.endSynchronization();
+		//mA.endSynchronization();
 		
 		mA.startSynchronization();
 		mA.stop();
@@ -205,6 +220,44 @@ class Robot {
 		mA.endSynchronization();
 	}
 	
+	public float getCarOrientation(){
+		angleMode.fetchSample(angleSample, 0);
+		carOrientation = angleSample[angleMode.sampleSize() - 1];
+		return carOrientation;
+	}
+	
+	public void navigateToGoal(ArrayList<int[]> path, float cellSize){
+		for(int i = 1; i < path.size(); ++i){
+			float dotProduct = 0*path.get(i)[0]+1*path.get(i)[1];
+			float lengthToNewWayPoint = (float) Math.sqrt(Math.pow(path.get(i)[0],2)+Math.pow(path.get(i)[1],2) );
+			float angleToRotate = (float) ((float) Math.acos(dotProduct/lengthToNewWayPoint) * (180/Math.PI)) ;
+			double distanceToTravel = Math.sqrt( Math.pow(path.get(i)[0]-path.get(i-1)[0],2) + Math.pow(path.get(i)[1]-path.get(i-1)[1],2) ) * cellSize; //in meters
+			double meterspersecond = 2.0*Math.PI*WHEEL_RADIUS/2.0;
+			double duration = (distanceToTravel /meterspersecond) * 1000.0;
+			
+			while(!(carOrientation > -(angleToRotate+0.5)) || !(carOrientation < -(angleToRotate-0.5))){
+				mA.forward();
+				mC.backward();
+			}
+			mA.startSynchronization();
+			mA.stop();
+			mC.stop();
+			mA.endSynchronization();
+			
+			mA.startSynchronization();
+			mA.setSpeed(180);
+			mC.setSpeed(180);
+			mA.forward();
+			mC.forward();	
+			mA.endSynchronization();
+			Delay.msDelay((long)duration);
+			mA.startSynchronization();
+			mA.stop();
+			mC.stop();
+			mA.endSynchronization();
+			
+		}
+	}
 }
 
 
@@ -345,6 +398,10 @@ class Localization {
 		}
 	}
 	
+	public void navigateToGoal(ArrayList<int[]> path){
+		
+	}
+	
 }
 
 
@@ -365,36 +422,50 @@ class AStarPlanner{
 		this.startingNode = startingNode;
 		this.goalNode = goalNode;
 		map = map2DGrid;
+		path = new ArrayList<int[]>(); 
 		openList = new ArrayList<>();
 		closedList = new ArrayList<>();
-		generateNeighbours();
+		addObstaclesToClosedList();
+		generateNeighbours(); //populate mapNodeToNeighbours
 		mapNodeToGnHnFn.put(startingNode, new float[]{0f,calculateHn(startingNode),calculateHn(startingNode)});
 		plan();
 	}
 	
-	private void generateNeighbours(){ //TODO test code
+	private void addObstaclesToClosedList(){
+		int maxX = map[0].length; 
+		int maxY = map.length;
+		for(int y=0; y < maxY; ++y){
+			for(int x=0; x < maxX; ++x){
+				if(map[y][x] == 1){
+					closedList.add(new int[]{x,y});
+				}
+			}
+		}
+	}
+	
+	private void generateNeighbours(){ 
 		int maxX = map[0].length; 
 		int maxY = map.length;
 		for(int y=0; y < maxY; ++y){
 			for(int x=0; x < maxX; ++x){
 				ArrayList<int[]> neighbours = new ArrayList<>();
 				if(y+1 < maxY){
-					if(map[x][y+1] != 1){
+					if(map[y+1][x] != 1){
 						neighbours.add(new int[]{x,y+1});
 					}
 				}
 				if(y-1 >= 0){
-					if(map[x][y-1] != 1){
+					if(map[y-1][x] != 1){
 						neighbours.add(new int[]{x,y-1});
 					}
 				}
 				if(x+1 < maxX){
-					if(map[x+1][y] != 1){
+					if(map[y][x+1] != 1){
 						neighbours.add(new int[]{x+1,y});
 					}
 				}
 				if(x-1 >= 0){
-					if(map[x-1][y] != 1){
+					if(map[y][x-1] != 1){
 						neighbours.add(new int[]{x-1,y});
 					}
 				}
@@ -411,33 +482,72 @@ class AStarPlanner{
 		currentNode = startingNode;
 		closedList.add(startingNode);
 		do{
-			for(int[] neighbour : mapNodeToNeighbours.get(currentNode)){
-				float fn = calculateFn(currentNode,neighbour);
-				if(openList.contains(neighbour)){
-					if(mapNodeToGnHnFn.get(neighbour)[2] > fn){
+			for(int[] neighbour : getNeighbours(currentNode)){
+				if(!isInClosedList(neighbour)){
+					float fn = calculateFn(currentNode,neighbour);
+					if(isInOpenList(neighbour)){
+						if(getNodeFn(neighbour) > fn){
+							setNodeGnHnFn(neighbour,calculateGnHnFn(currentNode, neighbour));
+							setNodeParent(neighbour,currentNode);
+						}
+					}else{		
+						openList.add(neighbour);  
 						setNodeGnHnFn(neighbour,calculateGnHnFn(currentNode, neighbour));
 						setNodeParent(neighbour,currentNode);
 					}
-				}else{		
-					openList.add(neighbour);  //TODO only add if not in closed list as well?
-					setNodeGnHnFn(neighbour,calculateGnHnFn(currentNode, neighbour));
-					setNodeParent(neighbour,currentNode);
-				}
-				int[] nodeWithLowestFn = getNodeWithLowestFn();
-				currentNode = nodeWithLowestFn;
-				openList.remove(nodeWithLowestFn);
-				closedList.add(nodeWithLowestFn);			
-			}	
-		}while(!openList.isEmpty() || !closedList.contains(goalNode));
+				}			
+			}
+			int[] nodeWithLowestFn = getNodeWithLowestFn();
+			currentNode = nodeWithLowestFn;
+			removeFromOpenList(nodeWithLowestFn);
+			closedList.add(nodeWithLowestFn);
+		}while(!openList.isEmpty() || !isInClosedList(goalNode));
 		
-		if(closedList.contains(goalNode)){
+		if(isInClosedList(goalNode)){
 			path.add(goalNode);
 			path = generatePath(path, goalNode);
 		}		
 	}
 	
+	private void removeFromOpenList(int[] node){
+		Iterator<int[]> iter = openList.iterator();
+
+		while (iter.hasNext()) {
+		    int[] eachNode = iter.next();
+		    if (eachNode[0] == node[0] && eachNode[1] == node[1])
+		        iter.remove();
+		}
+	}
+	
+	private ArrayList<int[]> getNeighbours(int[] node){
+		for(int[] eachNode: mapNodeToNeighbours.keySet()){
+			if(eachNode[0] == node[0] && eachNode[1] == node[1]){
+				return mapNodeToNeighbours.get(eachNode);
+			}
+		}
+		return null;
+	}
+	
+	private boolean isInOpenList(int[] node){
+		for(int[] eachNode : openList){
+			if(eachNode[0] == node[0] && eachNode[1] == node[1]){
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	private boolean isInClosedList(int[] node){
+		for(int[] eachNode : closedList){
+			if(eachNode[0] == node[0] && eachNode[1] == node[1]){
+				return true;
+			}
+		}
+		return false;
+	}
+	
 	private float calculateFn(int[] parent, int[] child){
-		float parentGn = mapNodeToGnHnFn.get(parent)[0];
+		float parentGn = getNodeGn(parent);
 		float childGn = parentGn + 1;
 		float childHn = calculateHn(child);
 		float childFn = childGn + childHn;
@@ -445,7 +555,7 @@ class AStarPlanner{
 	}
 	
 	private float[] calculateGnHnFn(int[] parent, int[] child){
-		float parentGn = mapNodeToGnHnFn.get(parent)[0];
+		float parentGn = getNodeGn(parent);
 		float childGn = parentGn + 1;
 		float childHn = calculateHn(child);
 		float childFn = childGn + childHn;
@@ -457,13 +567,13 @@ class AStarPlanner{
 		mapNodeToGnHnFn.put(node, scores);
 	}
 	
-	private float calculateHn(int[] node){ //TODO
-		float heuristic = 0;
+	/**
+	 * @param node
+	 * @return the Manhattan distance of the node to the goal node.
+	 */
+	private float calculateHn(int[] node){
+		float heuristic = Math.abs(node[0]-goalNode[0]) + Math.abs(node[1]-goalNode[1]);
 		return heuristic;
-	}
-	
-	private float getNodeFn(int[] node){
-		return mapNodeToGnHnFn.get(node)[2];
 	}
 	
 	
@@ -475,7 +585,7 @@ class AStarPlanner{
     	float lowestScore = 10000f;
     	int[] nodeWithLowestScore = openList.get(0);
     	for(int[] eachNode : openList){
-    		float eachNodeFn = mapNodeToGnHnFn.get(eachNode)[2];
+    		float eachNodeFn = getNodeFn(eachNode);
     		if(eachNodeFn < lowestScore){
     			lowestScore = eachNodeFn;
     			nodeWithLowestScore = eachNode;
@@ -484,13 +594,32 @@ class AStarPlanner{
     	return nodeWithLowestScore;
     }
     
+    private float getNodeFn(int[] node){
+    	for(int[] eachNode : mapNodeToGnHnFn.keySet()){
+    		if(eachNode[0] == node[0] && eachNode[1] == node[1]){
+    			return mapNodeToGnHnFn.get(eachNode)[2];
+    		}
+    	}
+    	return 0f;
+    }
+    
+    private float getNodeGn(int[] node){
+    	for(int[] eachNode : mapNodeToGnHnFn.keySet()){
+    		if(eachNode[0] == node[0] && eachNode[1] == node[1]){
+    			return mapNodeToGnHnFn.get(eachNode)[0];
+    		}
+    	}
+    	return 0f;
+    }
+    
+    
     /**
      * Return a path corresponding to the sequence of nodes that the robot should travel
      * to reach to goal from starting point, e.g. [startingPoint,[1,2],[2,2],[2,3],goalPoint]
      */
     private ArrayList<int[]> generatePath(ArrayList<int[]> path,int[] nextNode){
-    	int[] parentNode = mapNodeToParent.get(nextNode);
-    	if(parentNode.equals(startingNode)){
+    	int[] parentNode = getNodeParent(nextNode);
+    	if(parentNode[0] == startingNode[0] && parentNode[1] == startingNode[1]){
     		path.add(0,parentNode);
     		return path;
     	}else{		
@@ -499,18 +628,96 @@ class AStarPlanner{
     	}
     }
     
+    private int[] getNodeParent(int[] node){
+    	for(int[] eachNode : mapNodeToParent.keySet()){
+    		if(eachNode[0] == node[0] && eachNode[1]==node[1]){
+    			return mapNodeToParent.get(eachNode);
+    		}
+    	}
+    	return null;
+    };
+    
+    public ArrayList<int[]> convertPathToWaypoints(ArrayList<int[]> path){ //TODO test more complicated case
+    	int previousIndex = 0;
+    	ArrayList<int[]> newpath = new ArrayList<int[]>();
+    	newpath.add(path.get(0));
+    	for(int i=1 ; i < path.size() ; ++i){
+    		if(previousIndex==0 && path.get(i)[0]-path.get(i-1)[0]==1 && path.get(i)[1]-path.get(i-1)[1]==0){
+    			previousIndex = 1;
+    		}
+    		if(previousIndex==0 && path.get(i)[0]-path.get(i-1)[0]==0 && path.get(i)[1]-path.get(i-1)[1]==1){
+    			previousIndex = 2;
+    		}
+    		if(previousIndex==0 && path.get(i)[0]-path.get(i-1)[0]==1 && path.get(i)[1]-path.get(i-1)[1]==1){
+    			previousIndex = 3;
+    		}
+    		
+    		if(path.get(i)[0]-path.get(i-1)[0]==1 && path.get(i)[1]-path.get(i-1)[1]==0 && previousIndex==1){
+    			if(i == path.size()-1){
+    				newpath.add(path.get(i));
+    			}
+    			continue;
+    		}
+    		else if(path.get(i)[0]-path.get(i-1)[0]==0 && path.get(i)[1]-path.get(i-1)[1]==1 && previousIndex==2){
+    			if(i == path.size()-1){
+    				newpath.add(path.get(i));
+    			}
+    			continue;
+    		}
+    		else if(path.get(i)[0]-path.get(i-1)[0]==1 && path.get(i)[1]-path.get(i-1)[1]==1 && previousIndex==3){
+    			if(i == path.size()-1){
+    				newpath.add(path.get(i));
+    			}
+    			continue;
+    		}
+    		else{
+    			if( path.get(i)[0]-path.get(i-1)[0]==1 && path.get(i)[1]-path.get(i-1)[1]==0){
+        			previousIndex = 1;
+        		}
+        		if(path.get(i)[0]-path.get(i-1)[0]==0 && path.get(i)[1]-path.get(i-1)[1]==1){
+        			previousIndex = 2;
+        		}
+        		if(path.get(i)[0]-path.get(i-1)[0]==1 && path.get(i)[1]-path.get(i-1)[1]==1){
+        			previousIndex = 3;
+        		}
+    			newpath.add(path.get(i-1));
+    		} 		
+    	}
+    	return newpath;	
+    }
+    
+    
+    
  }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+class MapGrid{
+	
+	int[][] map;
+	float cellSize;
+	int[] goalNode;
+	int[] startingNode;
+	
+	public MapGrid(int[][] map,int[] startingNode, int[] goalNode){
+		this.map = map;
+		this.goalNode = goalNode;
+		this.startingNode = startingNode;
+		cellSize = 1.215f/map.length; //in meters
+	}
+	
+	public float getCellSize(){
+		return cellSize;
+	}
+	
+	public int[][] getMap(){
+		return map;
+	}
+	
+	public int[] getGoalNode(){
+		return goalNode;
+	}
+	
+	public int[] getStartingNode(){
+		return startingNode;
+	}
+}
