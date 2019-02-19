@@ -683,6 +683,7 @@ class TestNavigation{
 	public void testNavigateToGoal(ArrayList<int[]> path, float cellSize){
 		int[] previousVector = new int[]{20-21,5-4};
 		for(int i = 1; i < path.size(); ++i){
+			/*
 			int[] newVector = new int[]{path.get(i)[0]-path.get(i-1)[0],path.get(i)[1]-path.get(i-1)[1]};
 			float dotProduct = previousVector[0]*newVector[0]+previousVector[1]*newVector[1];
 			float lengthOfPreviousVector = (float) Math.sqrt(Math.pow(previousVector[0], 2) + Math.pow(previousVector[1], 2));
@@ -691,6 +692,20 @@ class TestNavigation{
 			double distanceToTravel = Math.sqrt( Math.pow(path.get(i)[0]-path.get(i-1)[0],2) + Math.pow(path.get(i)[1]-path.get(i-1)[1],2) ) * cellSize; //in meters
 		    
 			previousVector = newVector;
+			*/
+			
+			int[] newVector = new int[]{path.get(i)[0]-path.get(i-1)[0],path.get(i)[1]-path.get(i-1)[1]};
+			float crossProduct = previousVector[0]*newVector[1]-previousVector[1]*newVector[0];
+			float dotProduct = previousVector[0]*newVector[0]+previousVector[1]*newVector[1];
+			float angleToRotate = (float) ((float) Math.atan2(crossProduct,dotProduct) * (180/Math.PI));
+			float lengthOfPreviousVector = (float) Math.sqrt(Math.pow(previousVector[0], 2) + Math.pow(previousVector[1], 2));
+			float lengthToNewWayPoint = (float) Math.sqrt(Math.pow(newVector[0],2)+Math.pow(newVector[1],2) );
+			//float angleToRotate = (float) ((float) Math.asin(crossProduct/(lengthToNewWayPoint*lengthOfPreviousVector)) * (180/Math.PI)) ;
+			double distanceToTravel = Math.sqrt( Math.pow(path.get(i)[0]-path.get(i-1)[0],2) + Math.pow(path.get(i)[1]-path.get(i-1)[1],2) ) * cellSize; //in meters
+		    
+			previousVector = newVector;
+			
+			
 			System.out.println("Rotating Angle: "+angleToRotate + ", Distance To Travel: " +distanceToTravel );
 		
 			

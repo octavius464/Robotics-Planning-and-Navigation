@@ -53,20 +53,23 @@ public class RobotController {
 		
 		//Path Planning
 		//MapGrid mapGrid = new MapGrid(new int[][] {{0,0,0,0},{0,1,1,0},{0,1,1,0},{0,0,0,0}},new int[]{0,0} ,new int[]{3,3});
-		MapGrid mapGrid = new MapGrid(new int[]{0,0} ,new int[]{3,15});
+		MapGrid mapGrid = new MapGrid(new int[]{21,4} ,new int[]{3,15});
+		System.out.println("Done initializing map");
 		AStarPlanner planner = new AStarPlanner(mapGrid.getStartingNode(), mapGrid.getGoalNode(), mapGrid.getMap());
+		System.out.println("Path planned");
 		ArrayList<int[]> path = planner.getPath();
 		ArrayList<int[]> wayPoints = planner.convertPathToWaypoints(path); 
-		
+		System.out.println("Start navigating...");
 		//Navigate to goal
-		robot.navigateToGoal(wayPoints,mapGrid.getCellSize()); 
-		
+		robot.navigateToGoal(wayPoints,mapGrid.getCellSize());
+		System.out.println("Done navigating...");
+		/*
 		//Enter into cave, touch wall, make a beep sound, detect color, navigate out back to goal position
 		robot.rotateToEntrance();
 		robot.moveToWallAndBeep();
 		int colorAtWall = robot.getColorMeasurement();
 		robot.moveBackToGoal();
-		
+		*/
 		//Navigate to starting point
 		
 		
@@ -230,17 +233,16 @@ class Robot {
 		int[] previousVector = new int[]{20-21,5-4};
 		for(int i = 1; i < path.size(); ++i){
 			int[] newVector = new int[]{path.get(i)[0]-path.get(i-1)[0],path.get(i)[1]-path.get(i-1)[1]};
+			float crossProduct = previousVector[0]*newVector[1]-previousVector[1]*newVector[0];
 			float dotProduct = previousVector[0]*newVector[0]+previousVector[1]*newVector[1];
-			float lengthOfPreviousVector = (float) Math.sqrt(Math.pow(previousVector[0], 2) + Math.pow(previousVector[1], 2));
-			float lengthToNewWayPoint = (float) Math.sqrt(Math.pow(newVector[0],2)+Math.pow(newVector[1],2) );
-			float angleToRotate = (float) ((float) Math.acos(dotProduct/(lengthToNewWayPoint*lengthOfPreviousVector)) * (180/Math.PI)) ;
+			float angleToRotate = (float) ((float) Math.atan2(crossProduct,dotProduct) * (180/Math.PI));
 			double distanceToTravel = Math.sqrt( Math.pow(path.get(i)[0]-path.get(i-1)[0],2) + Math.pow(path.get(i)[1]-path.get(i-1)[1],2) ) * cellSize; //in meters
 		    
 			previousVector = newVector;
 			double meterspersecond = 2.0*Math.PI*WHEEL_RADIUS/2.0;
 			double duration = (distanceToTravel /meterspersecond) * 1000.0;
 			
-			while(!(carOrientation > -(angleToRotate+0.5)) || !(carOrientation < -(angleToRotate-0.5))){
+			while(!(carOrientation > -(angleToRotate+0.1)) || !(carOrientation < -(angleToRotate-0.1))){
 				mA.forward();
 				mC.backward();
 			}
