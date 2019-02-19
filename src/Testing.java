@@ -31,18 +31,32 @@ public class Testing {
 		
 
 		
-		MapGrid mapGrid = new MapGrid(new int[][] {{0,0,0,0},{0,1,1,0},{0,1,1,0},{0,0,0,0}},new int[]{0,0} ,new int[]{3,3});
-
+		//MapGrid1 mapGrid = new MapGrid1(new int[][] {{0,0,0,0},{0,1,1,0},{0,1,1,0},{0,0,0,0}},new int[]{0,0} ,new int[]{3,3});
+		MapGrid1 mapGrid = new MapGrid1(new int[]{21,4} ,new int[]{3,15});
+		mapGrid.printMap();
+		
 		AStarPlanner1 planner = new AStarPlanner1(mapGrid.getStartingNode(), mapGrid.getGoalNode(), mapGrid.getMap());
 		ArrayList<int[]> path = planner.getPath();
+		System.out.println("Path length: "+path.size());
+	
+		
+		System.out.println("Path length: "+path.size());
 		for(int[] wayPoint : path){
-			System.out.println(wayPoint[0] +" " + wayPoint[1]);
+			System.out.print("[" +wayPoint[0] +","+ wayPoint[1] + "], ");
 		}
 		ArrayList<int[]> newpath = planner.convertPathToWaypoints(path);
+		System.out.println();
 		System.out.println("new Path:");
+		System.out.println("Path length: "+newpath.size());
 		for(int[] wayPoint : newpath){
-			System.out.println(wayPoint[0] +" " + wayPoint[1]);
+			System.out.print("[" +wayPoint[0] +"," + wayPoint[1]+ "], ");
 		}
+		mapGrid.printMapWithPath(newpath);
+		System.out.println();
+		System.out.println();
+		
+		TestNavigation testnavigate = new TestNavigation();
+		testnavigate.testNavigateToGoal(newpath, mapGrid.getCellSize());
 		/*
 		HashMap<int[],ArrayList<int[]>> map = new HashMap<>();
 		int[] a = {0,0};
@@ -170,7 +184,7 @@ class AStarPlanner1{
 		openList = new ArrayList<>();
 		closedList = new ArrayList<>();
 		addObstaclesToClosedList();
-		generateNeighbours(); //populate mapNodeToNeighbours
+		generateNeighbours1(); //populate mapNodeToNeighbours
 		mapNodeToGnHnFn.put(startingNode, new float[]{0f,calculateHn(startingNode),calculateHn(startingNode)});
 		plan();
 	}
@@ -186,8 +200,10 @@ class AStarPlanner1{
 			}
 		}
 	}
-	
-	private void generateNeighbours(){ //TODO test code
+	/**
+	 * Robot moves only upward,downward,right and left.
+	 */
+	private void generateNeighbours(){
 		int maxX = map[0].length; 
 		int maxY = map.length;
 		for(int y=0; y < maxY; ++y){
@@ -211,6 +227,60 @@ class AStarPlanner1{
 				if(x-1 >= 0){
 					if(map[y][x-1] != 1){
 						neighbours.add(new int[]{x-1,y});
+					}
+				}
+				mapNodeToNeighbours.put(new int[]{x,y}, neighbours);
+			}
+		}
+	}
+	
+	/**
+	 * Apart from moving foward,backward,right and left, the robot can also move diagonally.
+	 */
+	private void generateNeighbours1(){ 
+		int maxX = map[0].length; 
+		int maxY = map.length;
+		for(int y=0; y < maxY; ++y){
+			for(int x=0; x < maxX; ++x){
+				ArrayList<int[]> neighbours = new ArrayList<>();
+				if(y+1 < maxY){
+					if(map[y+1][x] != 1){
+						neighbours.add(new int[]{x,y+1});
+					}
+				}
+				if(y-1 >= 0){
+					if(map[y-1][x] != 1){
+						neighbours.add(new int[]{x,y-1});
+					}
+				}
+				if(x+1 < maxX){
+					if(map[y][x+1] != 1){
+						neighbours.add(new int[]{x+1,y});
+					}
+				}
+				if(x-1 >= 0){
+					if(map[y][x-1] != 1){
+						neighbours.add(new int[]{x-1,y});
+					}
+				}
+				if(x-1 >= 0 && y-1>=0){
+					if(map[y-1][x-1] != 1){
+						neighbours.add(new int[]{x-1,y-1});
+					}
+				}
+				if(x-1 >= 0 && y+1< maxY){
+					if(map[y+1][x-1] != 1){
+						neighbours.add(new int[]{x-1,y+1});
+					}
+				}
+				if(x+1 < maxX && y-1>=0){
+					if(map[y-1][x+1] != 1){
+						neighbours.add(new int[]{x+1,y-1});
+					}
+				}
+				if(x+1 < maxX && y+1< maxY){
+					if(map[y+1][x+1] != 1){
+						neighbours.add(new int[]{x+1,y+1});
 					}
 				}
 				mapNodeToNeighbours.put(new int[]{x,y}, neighbours);
@@ -395,6 +465,15 @@ class AStarPlanner1{
     		if(previousIndex==0 && path.get(i)[0]-path.get(i-1)[0]==1 && path.get(i)[1]-path.get(i-1)[1]==1){
     			previousIndex = 3;
     		}
+    		if(previousIndex==0 && path.get(i)[0]-path.get(i-1)[0]==1 && path.get(i)[1]-path.get(i-1)[1]==-1){
+    			previousIndex = 4;
+    		}
+    		if(previousIndex==0 && path.get(i)[0]-path.get(i-1)[0]==-1 && path.get(i)[1]-path.get(i-1)[1]==1){
+    			previousIndex = 5;
+    		}
+    		if(previousIndex==0 && path.get(i)[0]-path.get(i-1)[0]==-1 && path.get(i)[1]-path.get(i-1)[1]==-1){
+    			previousIndex = 6;
+    		}
     		
     		if(path.get(i)[0]-path.get(i-1)[0]==1 && path.get(i)[1]-path.get(i-1)[1]==0 && previousIndex==1){
     			if(i == path.size()-1){
@@ -414,6 +493,24 @@ class AStarPlanner1{
     			}
     			continue;
     		}
+    		else if(path.get(i)[0]-path.get(i-1)[0]==1 && path.get(i)[1]-path.get(i-1)[1]==-1 && previousIndex==4){
+    			if(i == path.size()-1){
+    				newpath.add(path.get(i));
+    			}
+    			continue;
+    		}
+    		else if(path.get(i)[0]-path.get(i-1)[0]==-1 && path.get(i)[1]-path.get(i-1)[1]==1 && previousIndex==5){
+    			if(i == path.size()-1){
+    				newpath.add(path.get(i));
+    			}
+    			continue;
+    		}
+    		else if(path.get(i)[0]-path.get(i-1)[0]==-1 && path.get(i)[1]-path.get(i-1)[1]==-1 && previousIndex==6){
+    			if(i == path.size()-1){
+    				newpath.add(path.get(i));
+    			}
+    			continue;
+    		}
     		else{
     			if( path.get(i)[0]-path.get(i-1)[0]==1 && path.get(i)[1]-path.get(i-1)[1]==0){
         			previousIndex = 1;
@@ -423,6 +520,15 @@ class AStarPlanner1{
         		}
         		if(path.get(i)[0]-path.get(i-1)[0]==1 && path.get(i)[1]-path.get(i-1)[1]==1){
         			previousIndex = 3;
+        		}
+        		if(path.get(i)[0]-path.get(i-1)[0]==1 && path.get(i)[1]-path.get(i-1)[1]==-1){
+        			previousIndex = 4;
+        		}
+        		if(path.get(i)[0]-path.get(i-1)[0]==-1 && path.get(i)[1]-path.get(i-1)[1]==1){
+        			previousIndex = 5;
+        		}
+        		if(path.get(i)[0]-path.get(i-1)[0]==-1 && path.get(i)[1]-path.get(i-1)[1]==-1){
+        			previousIndex = 6;
         		}
     			newpath.add(path.get(i-1));
     		} 		
@@ -436,17 +542,104 @@ class AStarPlanner1{
 
 class MapGrid1{
 	
-	int[][] map;
+	int[][] map = new int[30][30];
 	float cellSize;
+	int xMAX = 30;
+	int yMAX = 30;
 	int[] goalNode;
 	int[] startingNode;
 	
-	public MapGrid1(int[][] map,int[] startingNode, int[] goalNode){
-		this.map = map;
+	public MapGrid1(int[] startingNode, int[] goalNode){
+		setMap();
 		this.goalNode = goalNode;
 		this.startingNode = startingNode;
 		cellSize = 1.215f/map.length; //in meters
 	}
+	
+	private void setMap(){
+		for(int y=0; y<yMAX; ++y){
+			for(int x=0; x<xMAX; ++x){
+				map[y][x] = 0;
+			}
+		}
+		setObstacles();
+	}
+	
+    public void setObstacles(){
+        //top left corner obstacle
+        for(int x = 0; x < 8; x++){
+            map[yMAX-1][x] = 1;
+        }
+        for(int x = 0; x < 7; x++){
+            map[yMAX-2][x] = 1;
+        }
+        for(int x = 0; x < 6; x++){
+            map[yMAX-3][x] = 1;
+        }
+        for(int x = 0; x < 5; x++){
+            map[yMAX-4][x] = 1;
+        }
+        for(int x = 0; x < 4; x++){
+            map[yMAX-5][x] = 1;
+        }
+        for(int x = 0; x < 3; x++){
+            map[yMAX-6][x] = 1;
+        }
+        for(int x = 0; x < 2; x++){
+            map[yMAX-7][x] = 1;
+        }
+        for(int x = 0; x < 1; x++){
+            map[yMAX-8][x] = 1;
+        }
+        //goal
+        for(int y=yMAX-9; y>yMAX-14;--y){
+        	for(int x=0; x<6; x++){
+        		map[y][x] = 1;
+        	}
+        }
+        
+        //bottom right corner obstacle
+        map[3][xMAX-1] = 1;
+        for(int x = 22; x < xMAX; x++){
+            map[0][x] = 1;
+        }
+        for(int x = 23; x < xMAX; x++){
+            map[1][x] = 1;
+        }
+        for(int x = 24; x < xMAX; x++){
+            map[2][x] = 1;
+        }
+        for(int x = 25; x < xMAX; x++){
+            map[3][x] = 1;
+        }
+        for(int x = 26; x < xMAX; x++){
+            map[4][x] = 1;
+        }
+        for(int x = 27; x < xMAX; x++){
+            map[5][x] = 1;
+        }
+        for(int x = 28; x < xMAX; x++){
+            map[6][x] = 1;
+        }
+        map[7][29]=1;
+          
+        //mid obstacle
+        for(int i=7; i<20; ++i){ //i=9 for the actual obstacle
+        	map[i][i] = 1;
+        }
+        for(int i=7; i<20; ++i){
+        	map[i+1][i] = 1;
+        }
+        for(int i=7; i<20; ++i){
+        	map[i-1][i] = 1;
+        }
+       
+        //one round obstacle on the left
+        map[3][3] = 1;
+        map[4][4] = 1;
+        map[3][4] = 1;
+        map[4][3] = 1;
+    }
 	
 	public float getCellSize(){
 		return cellSize;
@@ -462,5 +655,45 @@ class MapGrid1{
 	
 	public int[] getStartingNode(){
 		return startingNode;
+	}
+	
+	public void printMap(){
+		for(int y=(yMAX-1); y>-1; --y){
+			for(int x=0; x<xMAX; ++x){
+				System.out.print(map[y][x]);;
+			}
+			System.out.println();
+		}	
+	}
+	
+	public void printMapWithPath(ArrayList<int[]> path){
+		for(int[] point:path){
+			map[point[1]][point[0]]=2;
+		}
+		for(int y=(yMAX-1); y>-1; --y){
+			for(int x=0; x<xMAX; ++x){
+				System.out.print(map[y][x]);;
+			}
+			System.out.println();
+		}	
+	}
+}
+
+class TestNavigation{
+	public void testNavigateToGoal(ArrayList<int[]> path, float cellSize){
+		int[] previousVector = new int[]{20-21,5-4};
+		for(int i = 1; i < path.size(); ++i){
+			int[] newVector = new int[]{path.get(i)[0]-path.get(i-1)[0],path.get(i)[1]-path.get(i-1)[1]};
+			float dotProduct = previousVector[0]*newVector[0]+previousVector[1]*newVector[1];
+			float lengthOfPreviousVector = (float) Math.sqrt(Math.pow(previousVector[0], 2) + Math.pow(previousVector[1], 2));
+			float lengthToNewWayPoint = (float) Math.sqrt(Math.pow(newVector[0],2)+Math.pow(newVector[1],2) );
+			float angleToRotate = (float) ((float) Math.acos(dotProduct/(lengthToNewWayPoint*lengthOfPreviousVector)) * (180/Math.PI)) ;
+			double distanceToTravel = Math.sqrt( Math.pow(path.get(i)[0]-path.get(i-1)[0],2) + Math.pow(path.get(i)[1]-path.get(i-1)[1],2) ) * cellSize; //in meters
+		    
+			previousVector = newVector;
+			System.out.println("Rotating Angle: "+angleToRotate + ", Distance To Travel: " +distanceToTravel );
+		
+			
+		}
 	}
 }
