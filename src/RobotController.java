@@ -230,8 +230,10 @@ class Robot {
 	}
 	
 	public void navigateToGoal(ArrayList<int[]> path, float cellSize){
+		System.out.println(carOrientation);
 		int[] previousVector = new int[]{20-21,5-4};
 		for(int i = 1; i < path.size(); ++i){
+			System.out.println(carOrientation); 
 			int[] newVector = new int[]{path.get(i)[0]-path.get(i-1)[0],path.get(i)[1]-path.get(i-1)[1]};
 			float crossProduct = previousVector[0]*newVector[1]-previousVector[1]*newVector[0];
 			float dotProduct = previousVector[0]*newVector[0]+previousVector[1]*newVector[1];
@@ -241,10 +243,22 @@ class Robot {
 			previousVector = newVector;
 			double meterspersecond = 2.0*Math.PI*WHEEL_RADIUS/2.0;
 			double duration = (distanceToTravel /meterspersecond) * 1000.0;
-			
-			while(!(carOrientation > -(angleToRotate+0.1)) || !(carOrientation < -(angleToRotate-0.1))){
-				mA.forward();
-				mC.backward();
+			if(angleToRotate>0){
+				while(!(carOrientation < (angleToRotate+1)) || !(carOrientation > (angleToRotate-1))){
+					mA.backward();
+					mC.forward();
+					angleMode.fetchSample(angleSample, 0);
+					carOrientation = angleSample[angleMode.sampleSize() - 1];
+					System.out.println(carOrientation);
+				}
+			}else{
+				while(!(carOrientation > angleToRotate-1) || !(carOrientation < angleToRotate+1)){
+					mA.forward();
+					mC.backward();
+					angleMode.fetchSample(angleSample, 0);
+					carOrientation = angleSample[angleMode.sampleSize() - 1];
+					System.out.println(carOrientation);
+				}
 			}
 			mA.startSynchronization();
 			mA.stop();
@@ -262,7 +276,8 @@ class Robot {
 			mA.stop();
 			mC.stop();
 			mA.endSynchronization();
-			
+			gyroSensor.reset();
+			carOrientation = 0; 
 		}
 	}
 }
