@@ -32,7 +32,7 @@ public class Testing {
 
 		
 		//MapGrid1 mapGrid = new MapGrid1(new int[][] {{0,0,0,0},{0,1,1,0},{0,1,1,0},{0,0,0,0}},new int[]{0,0} ,new int[]{3,3});
-		MapGrid1 mapGrid = new MapGrid1(new int[]{21,4} ,new int[]{3,15});
+		MapGrid1 mapGrid = new MapGrid1(1, new int[]{12,3} ,new int[]{1,8});
 		mapGrid.printMap();
 		
 		AStarPlanner1 planner = new AStarPlanner1(mapGrid.getStartingNode(), mapGrid.getGoalNode(), mapGrid.getMap());
@@ -539,8 +539,126 @@ class AStarPlanner1{
     
  }
 
-
 class MapGrid1{
+	
+	int[][] map = new int[16][16];
+	float cellSize;
+	int xMAX = 16;
+	int yMAX = 16;
+	int[] goalNode;
+	int[] startingNode;
+	int index;
+	
+	public MapGrid1(int index, int[] startingNode, int[] goalNode){
+		setMap();
+		this.goalNode = goalNode;
+		this.startingNode = startingNode;
+		cellSize = 1.215f/map.length; //in meters
+		this.index = index;
+	}
+	
+	private void setMap(){
+		for(int y=0; y<yMAX; ++y){
+			for(int x=0; x<xMAX; ++x){
+				map[y][x] = 0;
+			}
+		}
+		setObstacles();
+	}
+	
+    public void setObstacles(){
+        //top left corner obstacle
+        for(int x=0;x<4 ;++x){
+        	map[15][x] = 1;
+        }
+        for(int x=0;x<3 ;++x){
+        	map[14][x] = 1;
+        }
+        for(int x=0;x<2 ;++x){
+        	map[13][x] = 1;
+        }
+        for(int x=0;x<1 ;++x){
+        	map[12][x] = 1;
+        }
+        
+        //goal
+        for(int y=yMAX-5; y>yMAX-8;--y){
+        	for(int x=0; x<3; x++){
+        		map[y][x] = 1;
+        	}
+        }
+        
+        //bottom right corner obstacle
+        for(int x = 12; x < xMAX; x++){
+            map[0][x] = 1;
+        }
+        for(int x = 13; x < xMAX; x++){
+            map[1][x] = 1;
+        }
+        for(int x = 14; x < xMAX; x++){
+            map[2][x] = 1;
+        }
+        for(int x = 15; x < xMAX; x++){
+            map[3][x] = 1;
+        }
+          
+        //mid obstacle
+        for(int i=4; i<10; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
+        	map[i][i] = 1;
+        }
+        for(int i=4; i<10; ++i){
+        	map[i+1][i] = 1;
+        }
+        for(int i=4; i<10; ++i){
+        	map[i-1][i] = 1;
+        }
+        if(index == 1){
+	        //one round obstacle on the left
+	        map[2][2] = 1;
+        }
+    }
+	
+	public float getCellSize(){
+		return cellSize;
+	}
+	
+	public int[][] getMap(){
+		return map;
+	}
+	
+	public int[] getGoalNode(){
+		return goalNode;
+	}
+	
+	public int[] getStartingNode(){
+		return startingNode;
+	}
+	
+	public void printMap(){
+		for(int y=(yMAX-1); y>-1; --y){
+			for(int x=0; x<xMAX; ++x){
+				System.out.print(map[y][x]);;
+			}
+			System.out.println();
+		}	
+	}
+	
+	public void printMapWithPath(ArrayList<int[]> path){
+		for(int[] point:path){
+			map[point[1]][point[0]]=2;
+		}
+		for(int y=(yMAX-1); y>-1; --y){
+			for(int x=0; x<xMAX; ++x){
+				System.out.print(map[y][x]);;
+			}
+			System.out.println();
+		}	
+	}
+}
+
+
+/*
+class MapGrid{
 	
 	int[][] map = new int[30][30];
 	float cellSize;
@@ -549,7 +667,7 @@ class MapGrid1{
 	int[] goalNode;
 	int[] startingNode;
 	
-	public MapGrid1(int[] startingNode, int[] goalNode){
+	public MapGrid(int[] startingNode, int[] goalNode){
 		setMap();
 		this.goalNode = goalNode;
 		this.startingNode = startingNode;
@@ -678,6 +796,7 @@ class MapGrid1{
 		}	
 	}
 }
+*/
 
 class TestNavigation{
 	public void testNavigateToGoal(ArrayList<int[]> path, float cellSize){
