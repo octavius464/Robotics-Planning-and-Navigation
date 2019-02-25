@@ -32,7 +32,7 @@ public class Testing {
 
 		
 		//MapGrid1 mapGrid = new MapGrid1(new int[][] {{0,0,0,0},{0,1,1,0},{0,1,1,0},{0,0,0,0}},new int[]{0,0} ,new int[]{3,3});
-		MapGrid1 mapGrid = new MapGrid1(1, new int[]{12,3} ,new int[]{1,8});
+		MapGrid1 mapGrid = new MapGrid1(1, new int[]{11,4} ,new int[]{1,8});
 		mapGrid.printMap();
 		
 		AStarPlanner1 planner = new AStarPlanner1(mapGrid.getStartingNode(), mapGrid.getGoalNode(), mapGrid.getMap());
@@ -550,11 +550,12 @@ class MapGrid1{
 	int index;
 	
 	public MapGrid1(int index, int[] startingNode, int[] goalNode){
+		this.index = index;
 		setMap();
 		this.goalNode = goalNode;
 		this.startingNode = startingNode;
 		cellSize = 1.215f/map.length; //in meters
-		this.index = index;
+		
 	}
 	
 	private void setMap(){
@@ -603,18 +604,38 @@ class MapGrid1{
         }
           
         //mid obstacle
-        for(int i=4; i<10; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
-        	map[i][i] = 1;
+        if(index==1){
+	        for(int i=4; i<10; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
+	        	map[i][i] = 1;
+	        }
+	        for(int i=4; i<10; ++i){
+	        	map[i+1][i] = 1;
+	        }
+	        for(int i=4; i<10; ++i){
+	        	map[i-1][i] = 1;
+	        }
         }
-        for(int i=4; i<10; ++i){
-        	map[i+1][i] = 1;
+        
+        if(index==2){
+	        for(int i=6; i<11; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
+	        	map[i][i] = 1;
+	        }
+	        for(int i=6; i<11; ++i){
+	        	map[i+1][i] = 1;
+	        }
+	        for(int i=6; i<11; ++i){
+	        	map[i-1][i] = 1;
+	        }
         }
-        for(int i=4; i<10; ++i){
-        	map[i-1][i] = 1;
-        }
-        if(index == 1){
+        
+        
+        if(index==1){
 	        //one round obstacle on the left
 	        map[2][2] = 1;
+        }
+        if(index==2){
+	        //one round obstacle on the right
+	        map[3][3] = 1;
         }
     }
 	
