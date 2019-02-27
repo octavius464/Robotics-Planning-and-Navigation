@@ -52,8 +52,10 @@ public class RobotController {
 		
 		
 		//Path Planning
+		int initialMapIndex = 2;
+		/*
 		//MapGrid mapGrid = new MapGrid(new int[][] {{0,0,0,0},{0,1,1,0},{0,1,1,0},{0,0,0,0}},new int[]{0,0} ,new int[]{3,3});
-		MapGrid mapGrid = new MapGrid(1, new int[]{11,4} ,new int[]{1,8});
+		MapGrid mapGrid = new MapGrid(initialMapIndex, new int[]{11,4} ,new int[]{1,8});
 		System.out.println("Done initializing map");
 		AStarPlanner planner = new AStarPlanner(mapGrid.getStartingNode(), mapGrid.getGoalNode(), mapGrid.getMap());
 		System.out.println("Path planned");
@@ -63,17 +65,21 @@ public class RobotController {
 		//Navigate to goal
 		robot.navigateToGoal(wayPoints,mapGrid.getCellSize());
 		System.out.println("Done navigating...");
-		
+	*/
 		
 		
 		//Enter into cave, touch wall, make a beep sound, detect color, navigate out back to goal position
-		/*
-		robot.rotateToEntrance();
+		
+		//robot.rotateToEntrance();
+		if(initialMapIndex == 2){
+			System.out.println("rotating");
+			robot.rotateToGoal();
+		}
 		robot.moveToWallAndBeep();
 		int colorAtWall = robot.getColorMeasurement();
 		int mapIndex = robot.getMapIndex(colorAtWall);
 		robot.moveBackToGoal();
-		*/
+		
 
 		
 		//Navigate to starting point
@@ -245,22 +251,21 @@ class Robot {
 		return carOrientation;
 	}
 	
-	public void navigateToGoal(ArrayList<int[]> path, float cellSize){
-		System.out.println(carOrientation);
-		int[] previousVector = new int[]{20-21,5-4};
+	public void navigate(ArrayList<int[]> path, float cellSize, int[] previousVector){
 		for(int i = 1; i < path.size(); ++i){
 			System.out.println(carOrientation); 
 			int[] newVector = new int[]{path.get(i)[0]-path.get(i-1)[0],path.get(i)[1]-path.get(i-1)[1]};
 			float crossProduct = previousVector[0]*newVector[1]-previousVector[1]*newVector[0];
 			float dotProduct = previousVector[0]*newVector[0]+previousVector[1]*newVector[1];
 			float angleToRotate = (float) ((float) Math.atan2(crossProduct,dotProduct) * (180/Math.PI));
+			angleToRotate = (float) (angleToRotate*0.83);
 			double distanceToTravel = Math.sqrt( Math.pow(path.get(i)[0]-path.get(i-1)[0],2) + Math.pow(path.get(i)[1]-path.get(i-1)[1],2) ) * cellSize; //in meters
 		    
 			previousVector = newVector;
 			double meterspersecond = 2.0*Math.PI*WHEEL_RADIUS/2.0;
 			double duration = (distanceToTravel /meterspersecond) * 1000.0;
 			if(angleToRotate>0){
-				while(!(carOrientation < (angleToRotate+0.1)) || !(carOrientation > (angleToRotate-0.1))){
+				while(carOrientation < angleToRotate){ 
 					mA.backward();
 					mC.forward();
 					angleMode.fetchSample(angleSample, 0);
@@ -268,7 +273,7 @@ class Robot {
 					System.out.println(carOrientation);
 				}
 			}else{
-				while(!(carOrientation > angleToRotate-0.1) || !(carOrientation < angleToRotate+0.1)){
+				while(carOrientation > angleToRotate){
 					mA.forward();
 					mC.backward();
 					angleMode.fetchSample(angleSample, 0);
@@ -276,6 +281,7 @@ class Robot {
 					System.out.println(carOrientation);
 				}
 			}
+			
 			mA.startSynchronization();
 			mA.stop();
 			mC.stop();
@@ -283,76 +289,33 @@ class Robot {
 		
 			mA.startSynchronization();
 			mA.setSpeed(180);
-			mC.setSpeed(180);
+			mC.setSpeed(180);		
 			mA.forward();
-			mC.forward();	
+			mC.forward();			
 			mA.endSynchronization();
 			Delay.msDelay((long)duration);
 			mA.startSynchronization();
 			mA.stop();
 			mC.stop();
+			
 			mA.endSynchronization();
 			gyroSensor.reset();
 			carOrientation = 0; 
 			
-			
 		}
+	}
+	
+	public void navigateToGoal(ArrayList<int[]> path, float cellSize){
+		System.out.println(carOrientation);
+		int[] previousVector = new int[]{20-21,5-4};
+		navigate(path, cellSize, previousVector);
+		
 	}
 	
 	public void navigateToStart(ArrayList<int[]> path, float cellSize){
 		System.out.println(carOrientation);
 		int[] previousVector = new int[]{0,8-9};
-		for(int i = 1; i < path.size(); ++i){
-			System.out.println(carOrientation); 
-			int[] newVector = new int[]{path.get(i)[0]-path.get(i-1)[0],path.get(i)[1]-path.get(i-1)[1]};
-			float crossProduct = previousVector[0]*newVector[1]-previousVector[1]*newVector[0];
-			float dotProduct = previousVector[0]*newVector[0]+previousVector[1]*newVector[1];
-			float angleToRotate = (float) ((float) Math.atan2(crossProduct,dotProduct) * (180/Math.PI));
-			double distanceToTravel = Math.sqrt( Math.pow(path.get(i)[0]-path.get(i-1)[0],2) + Math.pow(path.get(i)[1]-path.get(i-1)[1],2) ) * cellSize; //in meters
-		    
-			previousVector = newVector;
-			double meterspersecond = 2.0*Math.PI*WHEEL_RADIUS/2.0;
-			double duration = (distanceToTravel /meterspersecond) * 1000.0;
-			if(angleToRotate>0){
-				while(!(carOrientation < (angleToRotate+0.1)) || !(carOrientation > (angleToRotate-0.1))){
-					mA.backward();
-					mC.forward();
-					angleMode.fetchSample(angleSample, 0);
-					carOrientation = angleSample[angleMode.sampleSize() - 1];
-					System.out.println(carOrientation);
-				}
-			}else{
-				while(!(carOrientation > angleToRotate-0.1) || !(carOrientation < angleToRotate+0.1)){
-					mA.forward();
-					mC.backward();
-					angleMode.fetchSample(angleSample, 0);
-					carOrientation = angleSample[angleMode.sampleSize() - 1];
-					System.out.println(carOrientation);
-				}
-			}
-			Delay.msDelay(20000);
-			/*
-			mA.startSynchronization();
-			mA.stop();
-			mC.stop();
-			mA.endSynchronization();
-		
-			mA.startSynchronization();
-			mA.setSpeed(180);
-			mC.setSpeed(180);
-			mA.forward();
-			mC.forward();	
-			mA.endSynchronization();
-			Delay.msDelay((long)duration);
-			mA.startSynchronization();
-			mA.stop();
-			mC.stop();
-			mA.endSynchronization();
-			gyroSensor.reset();
-			carOrientation = 0; 
-			*/
-			
-		}
+		navigate(path, cellSize, previousVector);
 	}
 	
 	public int getMapIndex(int colorAtWall){ //TODO
@@ -361,6 +324,35 @@ class Robot {
 		}else{
 			return 4;
 		}
+	}
+	
+	public void testrotate(){
+		mA.setSpeed(180);
+		mC.setSpeed(180); 
+		while(carOrientation > 45){
+			mA.forward();
+			mC.backward();
+			angleMode.fetchSample(angleSample, 0);
+			carOrientation = angleSample[angleMode.sampleSize() - 1];
+			System.out.println(carOrientation);
+		}
+	}
+	public void rotateToGoal(){ //TODO test for robot
+		angleMode.fetchSample(angleSample, 0);
+		carOrientation = angleSample[angleMode.sampleSize() - 1];
+		mA.setSpeed(180);
+		mC.setSpeed(180);
+		while(carOrientation > 45){
+			mA.forward();
+			mC.backward();
+			angleMode.fetchSample(angleSample, 0);
+			carOrientation = angleSample[angleMode.sampleSize() - 1];
+			System.out.println(carOrientation);
+		}
+		mA.startSynchronization();
+		mA.stop();
+		mC.stop();
+		mA.endSynchronization();
 	}
 }
 
@@ -501,13 +493,7 @@ class Localization {
 			System.out.print(grid[i]);
 		}
 	}
-	
-	public void navigateToGoal(ArrayList<int[]> path){
-		
-	}
-	
 }
-
 
 class AStarPlanner{
 	
@@ -702,8 +688,7 @@ class AStarPlanner{
 		float heuristic = Math.abs(node[0]-goalNode[0]) + Math.abs(node[1]-goalNode[1]);
 		return heuristic;
 	}
-	
-	
+
     private void setNodeParent(int[] newNode, int[] parentNode){
     	mapNodeToParent.put(newNode, parentNode);
     }
@@ -848,9 +833,6 @@ class AStarPlanner{
     	}
     	return newpath;	
     }
-    
-    
-    
  }
 
 
@@ -881,69 +863,86 @@ class MapGrid{
 		setObstacles();
 	}
 	
-    public void setObstacles(){
+	public void setObstacles(){
         //top left corner obstacle
-        for(int x=0;x<4 ;++x){
-        	map[15][x] = 1;
-        }
-        for(int x=0;x<3 ;++x){
-        	map[14][x] = 1;
-        }
-        for(int x=0;x<2 ;++x){
-        	map[13][x] = 1;
-        }
-        for(int x=0;x<1 ;++x){
-        	map[12][x] = 1;
-        }
-        
+    	for(int y=0; y<4; ++y){
+	        for(int x=0;x<4-y ;++x){
+	        	map[15-y][x] = 1;
+	        }
+    	}
         //goal
         for(int y=yMAX-5; y>yMAX-8;--y){
         	for(int x=0; x<3; x++){
         		map[y][x] = 1;
         	}
+        }        
+        //bottom right corner obstacle
+        for(int y = 0; y < 4 ; y++){
+	        for(int x = 12+y; x < xMAX; x++){
+	            map[y][x] = 1;
+	        }
+        } 
+        //line 
+        for(int i=2; i<7 ; ++i){
+        	map[i][15-i] = 1;
         }
         
-        //bottom right corner obstacle
-        for(int x = 12; x < xMAX; x++){
-            map[0][x] = 1;
+        //red area
+        if(index == 1 || index == 2){
+	        for(int i=0;i<8;++i){
+	        	for(int x=15-i; x<xMAX; x++){
+	        		map[0+i][x] = 1;
+	        	}
+	        }
+	        for(int i=0;i<8;++i){
+	        	for(int x=15-i; x<xMAX; x++){
+	        		map[15-i][x] = 1;
+	        	}
+	        }
         }
-        for(int x = 13; x < xMAX; x++){
-            map[1][x] = 1;
+        if(index == 3 || index == 4){
+        	for(int i=0;i<8;++i){
+	        	for(int y=i; y>=0; --y){
+	        		map[y][0+i] = 1;
+	        	}
+	        }    
+        	for(int i=0;i<8;++i){
+	        	for(int y=i; y>=0; --y){
+	        		map[y][15-i] = 1;
+	        	}
+	        }       	
         }
-        for(int x = 14; x < xMAX; x++){
-            map[2][x] = 1;
-        }
-        for(int x = 15; x < xMAX; x++){
-            map[3][x] = 1;
-        }
-          
         
         //mid obstacle
         if(index==1){
-	        for(int i=4; i<10; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
-	        	map[i][i] = 1;
-	        }
-	        for(int i=4; i<10; ++i){
-	        	map[i+1][i] = 1;
-	        }
-	        for(int i=4; i<10; ++i){
-	        	map[i-1][i] = 1;
-	        }
-        }
-        
+        	for(int n=-1;n<2; ++n){
+		        for(int i=4; i<10; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
+		        	map[i+n][i] = 1;
+		        }
+        	}
+        }       
         if(index==2){
-	        for(int i=6; i<11; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
-	        	map[i][i] = 1;
-	        }
-	        for(int i=6; i<11; ++i){
-	        	map[i+1][i] = 1;
-	        }
-	        for(int i=6; i<11; ++i){
-	        	map[i-1][i] = 1;
-	        }
-        }
-        
-        
+        	for(int n=-1;n<2; ++n){
+		        for(int i=6; i<11; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
+		        	map[i+n][i] = 1;
+		        }
+        	}
+        }      
+        if(index==3){
+        	for(int n=-1;n<2; ++n){
+		        for(int i=6; i<11; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
+		        	map[i+n][i] = 1;
+		        }
+        	}
+        }    
+        if(index==4){
+        	for(int n=-1;n<2; ++n){
+		        for(int i=6; i<12; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
+		        	map[i+n][i] = 1;
+		        }
+        	}
+        }  
+        //round obstacle
         if(index==1){
 	        //one round obstacle on the left
 	        map[2][2] = 1;
@@ -952,6 +951,14 @@ class MapGrid{
 	        //one round obstacle on the right
 	        map[3][3] = 1;
         }
+        if(index==3){
+	        //one round obstacle on the left when returning
+	        map[12][12] = 1;
+        }
+        if(index==4){
+	        //one round obstacle on the right when returning
+	        map[13][13] = 1;
+        }
     }
 	
 	public float getCellSize(){
@@ -993,143 +1000,3 @@ class MapGrid{
 }
 
 
-/*
-class MapGrid{
-	
-	int[][] map = new int[30][30];
-	float cellSize;
-	int xMAX = 30;
-	int yMAX = 30;
-	int[] goalNode;
-	int[] startingNode;
-	
-	public MapGrid(int[] startingNode, int[] goalNode){
-		setMap();
-		this.goalNode = goalNode;
-		this.startingNode = startingNode;
-		cellSize = 1.215f/map.length; //in meters
-	}
-	
-	private void setMap(){
-		for(int y=0; y<yMAX; ++y){
-			for(int x=0; x<xMAX; ++x){
-				map[y][x] = 0;
-			}
-		}
-		setObstacles();
-	}
-	
-    public void setObstacles(){
-        //top left corner obstacle
-        for(int x = 0; x < 8; x++){
-            map[yMAX-1][x] = 1;
-        }
-        for(int x = 0; x < 7; x++){
-            map[yMAX-2][x] = 1;
-        }
-        for(int x = 0; x < 6; x++){
-            map[yMAX-3][x] = 1;
-        }
-        for(int x = 0; x < 5; x++){
-            map[yMAX-4][x] = 1;
-        }
-        for(int x = 0; x < 4; x++){
-            map[yMAX-5][x] = 1;
-        }
-        for(int x = 0; x < 3; x++){
-            map[yMAX-6][x] = 1;
-        }
-        for(int x = 0; x < 2; x++){
-            map[yMAX-7][x] = 1;
-        }
-        for(int x = 0; x < 1; x++){
-            map[yMAX-8][x] = 1;
-        }
-        //goal
-        for(int y=yMAX-9; y>yMAX-14;--y){
-        	for(int x=0; x<6; x++){
-        		map[y][x] = 1;
-        	}
-        }
-        
-        //bottom right corner obstacle
-        map[3][xMAX-1] = 1;
-        for(int x = 22; x < xMAX; x++){
-            map[0][x] = 1;
-        }
-        for(int x = 23; x < xMAX; x++){
-            map[1][x] = 1;
-        }
-        for(int x = 24; x < xMAX; x++){
-            map[2][x] = 1;
-        }
-        for(int x = 25; x < xMAX; x++){
-            map[3][x] = 1;
-        }
-        for(int x = 26; x < xMAX; x++){
-            map[4][x] = 1;
-        }
-        for(int x = 27; x < xMAX; x++){
-            map[5][x] = 1;
-        }
-        for(int x = 28; x < xMAX; x++){
-            map[6][x] = 1;
-        }
-        map[7][29]=1;
-          
-        //mid obstacle
-        for(int i=7; i<20; ++i){ //i=9 for the actual obstacle
-        	map[i][i] = 1;
-        }
-        for(int i=7; i<20; ++i){
-        	map[i+1][i] = 1;
-        }
-        for(int i=7; i<20; ++i){
-        	map[i-1][i] = 1;
-        }
-       
-        //one round obstacle on the left
-        map[3][3] = 1;
-        map[4][4] = 1;
-        map[3][4] = 1;
-        map[4][3] = 1;
-    }
-	
-	public float getCellSize(){
-		return cellSize;
-	}
-	
-	public int[][] getMap(){
-		return map;
-	}
-	
-	public int[] getGoalNode(){
-		return goalNode;
-	}
-	
-	public int[] getStartingNode(){
-		return startingNode;
-	}
-	
-	public void printMap(){
-		for(int y=(yMAX-1); y>-1; --y){
-			for(int x=0; x<xMAX; ++x){
-				System.out.print(map[y][x]);;
-			}
-			System.out.println();
-		}	
-	}
-	
-	public void printMapWithPath(ArrayList<int[]> path){
-		for(int[] point:path){
-			map[point[1]][point[0]]=2;
-		}
-		for(int y=(yMAX-1); y>-1; --y){
-			for(int x=0; x<xMAX; ++x){
-				System.out.print(map[y][x]);;
-			}
-			System.out.println();
-		}	
-	}
-}
-*/

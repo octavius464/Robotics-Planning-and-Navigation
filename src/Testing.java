@@ -44,6 +44,7 @@ public class Testing {
 		for(int[] wayPoint : path){
 			System.out.print("[" +wayPoint[0] +","+ wayPoint[1] + "], ");
 		}
+		System.out.println();
 		ArrayList<int[]> newpath = planner.convertPathToWaypoints(path);
 		System.out.println();
 		System.out.println("new Path:");
@@ -51,6 +52,7 @@ public class Testing {
 		for(int[] wayPoint : newpath){
 			System.out.print("[" +wayPoint[0] +"," + wayPoint[1]+ "], ");
 		}
+		System.out.println();
 		mapGrid.printMapWithPath(newpath);
 		System.out.println();
 		System.out.println();
@@ -569,66 +571,84 @@ class MapGrid1{
 	
     public void setObstacles(){
         //top left corner obstacle
-        for(int x=0;x<4 ;++x){
-        	map[15][x] = 1;
-        }
-        for(int x=0;x<3 ;++x){
-        	map[14][x] = 1;
-        }
-        for(int x=0;x<2 ;++x){
-        	map[13][x] = 1;
-        }
-        for(int x=0;x<1 ;++x){
-        	map[12][x] = 1;
-        }
-        
+    	for(int y=0; y<4; ++y){
+	        for(int x=0;x<4-y ;++x){
+	        	map[15-y][x] = 1;
+	        }
+    	}
         //goal
         for(int y=yMAX-5; y>yMAX-8;--y){
         	for(int x=0; x<3; x++){
         		map[y][x] = 1;
         	}
+        }        
+        //bottom right corner obstacle
+        for(int y = 0; y < 4 ; y++){
+	        for(int x = 12+y; x < xMAX; x++){
+	            map[y][x] = 1;
+	        }
+        } 
+        //line 
+        for(int i=2; i<7 ; ++i){
+        	map[i][15-i] = 1;
         }
         
-        //bottom right corner obstacle
-        for(int x = 12; x < xMAX; x++){
-            map[0][x] = 1;
+        //red area
+        if(index == 1 || index == 2){
+	        for(int i=0;i<8;++i){
+	        	for(int x=15-i; x<xMAX; x++){
+	        		map[0+i][x] = 1;
+	        	}
+	        }
+	        for(int i=0;i<8;++i){
+	        	for(int x=15-i; x<xMAX; x++){
+	        		map[15-i][x] = 1;
+	        	}
+	        }
         }
-        for(int x = 13; x < xMAX; x++){
-            map[1][x] = 1;
+        if(index == 3 || index == 4){
+        	for(int i=0;i<8;++i){
+	        	for(int y=i; y>=0; --y){
+	        		map[y][0+i] = 1;
+	        	}
+	        }    
+        	for(int i=0;i<8;++i){
+	        	for(int y=i; y>=0; --y){
+	        		map[y][15-i] = 1;
+	        	}
+	        }       	
         }
-        for(int x = 14; x < xMAX; x++){
-            map[2][x] = 1;
-        }
-        for(int x = 15; x < xMAX; x++){
-            map[3][x] = 1;
-        }
-          
+        
         //mid obstacle
         if(index==1){
-	        for(int i=4; i<10; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
-	        	map[i][i] = 1;
-	        }
-	        for(int i=4; i<10; ++i){
-	        	map[i+1][i] = 1;
-	        }
-	        for(int i=4; i<10; ++i){
-	        	map[i-1][i] = 1;
-	        }
-        }
-        
+        	for(int n=-1;n<2; ++n){
+		        for(int i=4; i<10; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
+		        	map[i+n][i] = 1;
+		        }
+        	}
+        }       
         if(index==2){
-	        for(int i=6; i<11; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
-	        	map[i][i] = 1;
-	        }
-	        for(int i=6; i<11; ++i){
-	        	map[i+1][i] = 1;
-	        }
-	        for(int i=6; i<11; ++i){
-	        	map[i-1][i] = 1;
-	        }
-        }
-        
-        
+        	for(int n=-1;n<2; ++n){
+		        for(int i=6; i<11; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
+		        	map[i+n][i] = 1;
+		        }
+        	}
+        }      
+        if(index==3){
+        	for(int n=-1;n<2; ++n){
+		        for(int i=6; i<11; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
+		        	map[i+n][i] = 1;
+		        }
+        	}
+        }    
+        if(index==4){
+        	for(int n=-1;n<2; ++n){
+		        for(int i=6; i<12; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
+		        	map[i+n][i] = 1;
+		        }
+        	}
+        }  
+        //round obstacle
         if(index==1){
 	        //one round obstacle on the left
 	        map[2][2] = 1;
@@ -636,6 +656,14 @@ class MapGrid1{
         if(index==2){
 	        //one round obstacle on the right
 	        map[3][3] = 1;
+        }
+        if(index==3){
+	        //one round obstacle on the left when returning
+	        map[12][12] = 1;
+        }
+        if(index==4){
+	        //one round obstacle on the right when returning
+	        map[13][13] = 1;
         }
     }
 	
