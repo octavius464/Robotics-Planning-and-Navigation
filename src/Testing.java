@@ -32,7 +32,8 @@ public class Testing {
 
 		
 		//MapGrid1 mapGrid = new MapGrid1(new int[][] {{0,0,0,0},{0,1,1,0},{0,1,1,0},{0,0,0,0}},new int[]{0,0} ,new int[]{3,3});
-		MapGrid1 mapGrid = new MapGrid1(1, new int[]{11,4} ,new int[]{1,8});
+		/*
+		MapGrid1 mapGrid = new MapGrid1(2, new int[]{11,4} ,new int[]{1,8});
 		mapGrid.printMap();
 		
 		AStarPlanner1 planner = new AStarPlanner1(mapGrid.getStartingNode(), mapGrid.getGoalNode(), mapGrid.getMap());
@@ -59,26 +60,35 @@ public class Testing {
 		
 		TestNavigation testnavigate = new TestNavigation();
 		testnavigate.testNavigateToGoal(newpath, mapGrid.getCellSize());
-		/*
-		HashMap<int[],ArrayList<int[]>> map = new HashMap<>();
-		int[] a = {0,0};
-		ArrayList<int[]> aList = new ArrayList<>();
-		aList.add(new int[]{0,0});
-		aList.add(new int[]{2,3});
-		int[] d = {0,0};
-		
-		map.put(a,aList);
-		int[] b = {1,9};
-		ArrayList<int[]> bList = new ArrayList<>();
-		aList.add(new int[]{1,2});
-		aList.add(new int[]{2,3});
-		map.put(b,bList);
-		for(int[] eachKey:map.keySet()){
-			if(eachKey[0] == d[0] && eachKey[1] == d[1]){
-				System.out.println(true);
-			}
-		}
 		*/
+		MapGrid mapGridToStart = new MapGrid(4, new int[]{1,8} ,new int[]{14,3});
+		mapGridToStart.printMap();
+		
+		AStarPlanner1 planner = new AStarPlanner1(mapGridToStart.getStartingNode(), mapGridToStart.getGoalNode(), mapGridToStart.getMap());
+		ArrayList<int[]> path = planner.getPath();
+		System.out.println("Path length: "+path.size());
+	
+		
+		System.out.println("Path length: "+path.size());
+		for(int[] wayPoint : path){
+			System.out.print("[" +wayPoint[0] +","+ wayPoint[1] + "], ");
+		}
+		System.out.println();
+		ArrayList<int[]> newpath = planner.convertPathToWaypoints(path);
+		System.out.println();
+		System.out.println("new Path:");
+		System.out.println("Path length: "+newpath.size());
+		for(int[] wayPoint : newpath){
+			System.out.print("[" +wayPoint[0] +"," + wayPoint[1]+ "], ");
+		}
+		System.out.println();
+		mapGridToStart.printMapWithPath(newpath);
+		System.out.println();
+		System.out.println();
+		
+		TestNavigation testnavigate = new TestNavigation();
+		testnavigate.testNavigateToStart(newpath, mapGridToStart.getCellSize());
+		//Tested all maps and paths, all look good 
 	}
 }
 
@@ -456,8 +466,9 @@ class AStarPlanner1{
     public ArrayList<int[]> convertPathToWaypoints(ArrayList<int[]> path){ //TODO
     	int previousIndex = 0;
     	ArrayList<int[]> newpath = new ArrayList<int[]>();
-    	newpath.add(path.get(0));
+    	//newpath.add(path.get(0));
     	for(int i=1 ; i < path.size() ; ++i){
+    		/*
     		if(previousIndex==0 && path.get(i)[0]-path.get(i-1)[0]==1 && path.get(i)[1]-path.get(i-1)[1]==0){
     			previousIndex = 1;
     		}
@@ -476,7 +487,13 @@ class AStarPlanner1{
     		if(previousIndex==0 && path.get(i)[0]-path.get(i-1)[0]==-1 && path.get(i)[1]-path.get(i-1)[1]==-1){
     			previousIndex = 6;
     		}
-    		
+    		if(previousIndex==0 && path.get(i)[0]-path.get(i-1)[0]==-1 && path.get(i)[1]-path.get(i-1)[1]==0){
+    			previousIndex = 7;
+    		}
+    		if(previousIndex==0 && path.get(i)[0]-path.get(i-1)[0]==0 && path.get(i)[1]-path.get(i-1)[1]==-1){
+    			previousIndex = 8;
+    		}
+    		*/
     		if(path.get(i)[0]-path.get(i-1)[0]==1 && path.get(i)[1]-path.get(i-1)[1]==0 && previousIndex==1){
     			if(i == path.size()-1){
     				newpath.add(path.get(i));
@@ -513,6 +530,18 @@ class AStarPlanner1{
     			}
     			continue;
     		}
+    		else if(path.get(i)[0]-path.get(i-1)[0]==0 && path.get(i)[1]-path.get(i-1)[1]==-1 && previousIndex==7){
+    			if(i == path.size()-1){
+    				newpath.add(path.get(i));
+    			}
+    			continue;
+    		}
+    		else if(path.get(i)[0]-path.get(i-1)[0]==-1 && path.get(i)[1]-path.get(i-1)[1]==0 && previousIndex==8){
+    			if(i == path.size()-1){
+    				newpath.add(path.get(i));
+    			}
+    			continue;
+    		}
     		else{
     			if( path.get(i)[0]-path.get(i-1)[0]==1 && path.get(i)[1]-path.get(i-1)[1]==0){
         			previousIndex = 1;
@@ -532,7 +561,16 @@ class AStarPlanner1{
         		if(path.get(i)[0]-path.get(i-1)[0]==-1 && path.get(i)[1]-path.get(i-1)[1]==-1){
         			previousIndex = 6;
         		}
+        		if(path.get(i)[0]-path.get(i-1)[0]==0 && path.get(i)[1]-path.get(i-1)[1]==-1){
+        			previousIndex = 7;
+        		}
+        		if(path.get(i)[0]-path.get(i-1)[0]==-1 && path.get(i)[1]-path.get(i-1)[1]==0){
+        			previousIndex = 8;
+        		}
     			newpath.add(path.get(i-1));
+    			if(i == path.size()-1){
+    				newpath.add(path.get(i));
+    			}
     		} 		
     	}
     	return newpath;	
@@ -850,6 +888,37 @@ class MapGrid{
 class TestNavigation{
 	public void testNavigateToGoal(ArrayList<int[]> path, float cellSize){
 		int[] previousVector = new int[]{20-21,5-4};
+		for(int i = 1; i < path.size(); ++i){
+			/*
+			int[] newVector = new int[]{path.get(i)[0]-path.get(i-1)[0],path.get(i)[1]-path.get(i-1)[1]};
+			float dotProduct = previousVector[0]*newVector[0]+previousVector[1]*newVector[1];
+			float lengthOfPreviousVector = (float) Math.sqrt(Math.pow(previousVector[0], 2) + Math.pow(previousVector[1], 2));
+			float lengthToNewWayPoint = (float) Math.sqrt(Math.pow(newVector[0],2)+Math.pow(newVector[1],2) );
+			float angleToRotate = (float) ((float) Math.acos(dotProduct/(lengthToNewWayPoint*lengthOfPreviousVector)) * (180/Math.PI)) ;
+			double distanceToTravel = Math.sqrt( Math.pow(path.get(i)[0]-path.get(i-1)[0],2) + Math.pow(path.get(i)[1]-path.get(i-1)[1],2) ) * cellSize; //in meters
+		    
+			previousVector = newVector;
+			*/
+			
+			int[] newVector = new int[]{path.get(i)[0]-path.get(i-1)[0],path.get(i)[1]-path.get(i-1)[1]};
+			float crossProduct = previousVector[0]*newVector[1]-previousVector[1]*newVector[0];
+			float dotProduct = previousVector[0]*newVector[0]+previousVector[1]*newVector[1];
+			float angleToRotate = (float) ((float) Math.atan2(crossProduct,dotProduct) * (180/Math.PI));
+			float lengthOfPreviousVector = (float) Math.sqrt(Math.pow(previousVector[0], 2) + Math.pow(previousVector[1], 2));
+			float lengthToNewWayPoint = (float) Math.sqrt(Math.pow(newVector[0],2)+Math.pow(newVector[1],2) );
+			//float angleToRotate = (float) ((float) Math.asin(crossProduct/(lengthToNewWayPoint*lengthOfPreviousVector)) * (180/Math.PI)) ;
+			double distanceToTravel = Math.sqrt( Math.pow(path.get(i)[0]-path.get(i-1)[0],2) + Math.pow(path.get(i)[1]-path.get(i-1)[1],2) ) * cellSize; //in meters
+		    
+			previousVector = newVector;
+			
+			
+			System.out.println("Rotating Angle: "+angleToRotate + ", Distance To Travel: " +distanceToTravel );
+		
+			
+		}
+	}
+	public void testNavigateToStart(ArrayList<int[]> path, float cellSize){
+		int[] previousVector = new int[]{0,8-9};
 		for(int i = 1; i < path.size(); ++i){
 			/*
 			int[] newVector = new int[]{path.get(i)[0]-path.get(i-1)[0],path.get(i)[1]-path.get(i-1)[1]};

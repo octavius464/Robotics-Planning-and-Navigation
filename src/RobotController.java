@@ -53,7 +53,7 @@ public class RobotController {
 		
 		//Path Planning
 		int initialMapIndex = 2;
-		/*
+		
 		//MapGrid mapGrid = new MapGrid(new int[][] {{0,0,0,0},{0,1,1,0},{0,1,1,0},{0,0,0,0}},new int[]{0,0} ,new int[]{3,3});
 		MapGrid mapGrid = new MapGrid(initialMapIndex, new int[]{11,4} ,new int[]{1,8});
 		System.out.println("Done initializing map");
@@ -65,16 +65,12 @@ public class RobotController {
 		//Navigate to goal
 		robot.navigateToGoal(wayPoints,mapGrid.getCellSize());
 		System.out.println("Done navigating...");
-	*/
+	
 		
 		
 		//Enter into cave, touch wall, make a beep sound, detect color, navigate out back to goal position
 		
-		//robot.rotateToEntrance();
-		if(initialMapIndex == 2){
-			System.out.println("rotating");
-			robot.rotateToGoal();
-		}
+	    robot.rotateToGoal(new int[]{path.get(-1)[0]-path.get(-2)[0], path.get(-1)[1]-path.get(-2)[1]} );		
 		robot.moveToWallAndBeep();
 		int colorAtWall = robot.getColorMeasurement();
 		int mapIndex = robot.getMapIndex(colorAtWall);
@@ -84,7 +80,7 @@ public class RobotController {
 		
 		//Navigate to starting point
 		/*
-		MapGrid mapGridToStart = new MapGrid(mapIndex, new int[]{1,8} ,new int[]{14,2});
+		MapGrid mapGridToStart = new MapGrid(mapIndex, new int[]{1,8} ,new int[]{14,3});
 		System.out.println("Done initializing map");
 		AStarPlanner plannerToStart = new AStarPlanner(mapGridToStart.getStartingNode(), mapGridToStart.getGoalNode(), mapGridToStart.getMap());
 		System.out.println("Path planned");
@@ -105,6 +101,7 @@ class Robot {
 
 	static double WHEEL_RADIUS = 0.015;
 	int localizedPos;
+	float angleCorrection = 0.83f;
 	EV3ColorSensor colorSensor;
 	
 	EV3GyroSensor gyroSensor;
@@ -258,7 +255,7 @@ class Robot {
 			float crossProduct = previousVector[0]*newVector[1]-previousVector[1]*newVector[0];
 			float dotProduct = previousVector[0]*newVector[0]+previousVector[1]*newVector[1];
 			float angleToRotate = (float) ((float) Math.atan2(crossProduct,dotProduct) * (180/Math.PI));
-			angleToRotate = (float) (angleToRotate*0.83);
+			angleToRotate = (float) (angleToRotate*angleCorrection);
 			double distanceToTravel = Math.sqrt( Math.pow(path.get(i)[0]-path.get(i-1)[0],2) + Math.pow(path.get(i)[1]-path.get(i-1)[1],2) ) * cellSize; //in meters
 		    
 			previousVector = newVector;
@@ -337,18 +334,34 @@ class Robot {
 			System.out.println(carOrientation);
 		}
 	}
-	public void rotateToGoal(){ //TODO test for robot
+	public void rotateToGoal(int[] previousVector){ //TODO test for robot
+		int[] newVector = new int[]{1-1,9-8};
+		float crossProduct = previousVector[0]*newVector[1]-previousVector[1]*newVector[0];
+		float dotProduct = previousVector[0]*newVector[0]+previousVector[1]*newVector[1];
+		float angleToRotate = (float) ((float) Math.atan2(crossProduct,dotProduct) * (180/Math.PI));
+		angleToRotate = (float) (angleToRotate*angleCorrection);
 		angleMode.fetchSample(angleSample, 0);
 		carOrientation = angleSample[angleMode.sampleSize() - 1];
 		mA.setSpeed(180);
 		mC.setSpeed(180);
-		while(carOrientation > 45){
-			mA.forward();
-			mC.backward();
-			angleMode.fetchSample(angleSample, 0);
-			carOrientation = angleSample[angleMode.sampleSize() - 1];
-			System.out.println(carOrientation);
+		if(angleToRotate>0){
+			while(carOrientation < angleToRotate){ 
+				mA.backward();
+				mC.forward();
+				angleMode.fetchSample(angleSample, 0);
+				carOrientation = angleSample[angleMode.sampleSize() - 1];
+				System.out.println(carOrientation);
+			}
+		}else{
+			while(carOrientation > angleToRotate){
+				mA.forward();
+				mC.backward();
+				angleMode.fetchSample(angleSample, 0);
+				carOrientation = angleSample[angleMode.sampleSize() - 1];
+				System.out.println(carOrientation);
+			}
 		}
+		
 		mA.startSynchronization();
 		mA.stop();
 		mC.stop();
@@ -752,27 +765,7 @@ class AStarPlanner{
     public ArrayList<int[]> convertPathToWaypoints(ArrayList<int[]> path){ 
     	int previousIndex = 0;
     	ArrayList<int[]> newpath = new ArrayList<int[]>();
-    	newpath.add(path.get(0));
     	for(int i=1 ; i < path.size() ; ++i){
-    		if(previousIndex==0 && path.get(i)[0]-path.get(i-1)[0]==1 && path.get(i)[1]-path.get(i-1)[1]==0){
-    			previousIndex = 1;
-    		}
-    		if(previousIndex==0 && path.get(i)[0]-path.get(i-1)[0]==0 && path.get(i)[1]-path.get(i-1)[1]==1){
-    			previousIndex = 2;
-    		}
-    		if(previousIndex==0 && path.get(i)[0]-path.get(i-1)[0]==1 && path.get(i)[1]-path.get(i-1)[1]==1){
-    			previousIndex = 3;
-    		}
-    		if(previousIndex==0 && path.get(i)[0]-path.get(i-1)[0]==1 && path.get(i)[1]-path.get(i-1)[1]==-1){
-    			previousIndex = 4;
-    		}
-    		if(previousIndex==0 && path.get(i)[0]-path.get(i-1)[0]==-1 && path.get(i)[1]-path.get(i-1)[1]==1){
-    			previousIndex = 5;
-    		}
-    		if(previousIndex==0 && path.get(i)[0]-path.get(i-1)[0]==-1 && path.get(i)[1]-path.get(i-1)[1]==-1){
-    			previousIndex = 6;
-    		}
-    		
     		if(path.get(i)[0]-path.get(i-1)[0]==1 && path.get(i)[1]-path.get(i-1)[1]==0 && previousIndex==1){
     			if(i == path.size()-1){
     				newpath.add(path.get(i));
@@ -809,6 +802,18 @@ class AStarPlanner{
     			}
     			continue;
     		}
+    		else if(path.get(i)[0]-path.get(i-1)[0]==0 && path.get(i)[1]-path.get(i-1)[1]==-1 && previousIndex==7){
+    			if(i == path.size()-1){
+    				newpath.add(path.get(i));
+    			}
+    			continue;
+    		}
+    		else if(path.get(i)[0]-path.get(i-1)[0]==-1 && path.get(i)[1]-path.get(i-1)[1]==0 && previousIndex==8){
+    			if(i == path.size()-1){
+    				newpath.add(path.get(i));
+    			}
+    			continue;
+    		}
     		else{
     			if( path.get(i)[0]-path.get(i-1)[0]==1 && path.get(i)[1]-path.get(i-1)[1]==0){
         			previousIndex = 1;
@@ -828,7 +833,16 @@ class AStarPlanner{
         		if(path.get(i)[0]-path.get(i-1)[0]==-1 && path.get(i)[1]-path.get(i-1)[1]==-1){
         			previousIndex = 6;
         		}
+        		if(path.get(i)[0]-path.get(i-1)[0]==0 && path.get(i)[1]-path.get(i-1)[1]==-1){
+        			previousIndex = 7;
+        		}
+        		if(path.get(i)[0]-path.get(i-1)[0]==-1 && path.get(i)[1]-path.get(i-1)[1]==0){
+        			previousIndex = 8;
+        		}
     			newpath.add(path.get(i-1));
+    			if(i == path.size()-1){
+    				newpath.add(path.get(i));
+    			}
     		} 		
     	}
     	return newpath;	
