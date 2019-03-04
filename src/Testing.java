@@ -32,8 +32,8 @@ public class Testing {
 
 		
 		//MapGrid1 mapGrid = new MapGrid1(new int[][] {{0,0,0,0},{0,1,1,0},{0,1,1,0},{0,0,0,0}},new int[]{0,0} ,new int[]{3,3});
-		/*
-		MapGrid1 mapGrid = new MapGrid1(2, new int[]{11,4} ,new int[]{1,8});
+		
+		MapGrid1 mapGrid = new MapGrid1(2, new int[]{12,3} ,new int[]{1,8});
 		mapGrid.printMap();
 		
 		AStarPlanner1 planner = new AStarPlanner1(mapGrid.getStartingNode(), mapGrid.getGoalNode(), mapGrid.getMap());
@@ -60,34 +60,37 @@ public class Testing {
 		
 		TestNavigation testnavigate = new TestNavigation();
 		testnavigate.testNavigateToGoal(newpath, mapGrid.getCellSize());
-		*/
+		
+		
+		
+		
 		MapGrid mapGridToStart = new MapGrid(4, new int[]{1,8} ,new int[]{14,3});
 		mapGridToStart.printMap();
 		
-		AStarPlanner1 planner = new AStarPlanner1(mapGridToStart.getStartingNode(), mapGridToStart.getGoalNode(), mapGridToStart.getMap());
-		ArrayList<int[]> path = planner.getPath();
-		System.out.println("Path length: "+path.size());
-	
+		AStarPlanner1 plannerToStart = new AStarPlanner1(mapGridToStart.getStartingNode(), mapGridToStart.getGoalNode(), mapGridToStart.getMap());
+		ArrayList<int[]> pathToStart = plannerToStart.getPath();
+		System.out.println("Path length: "+pathToStart.size());
 		
-		System.out.println("Path length: "+path.size());
-		for(int[] wayPoint : path){
-			System.out.print("[" +wayPoint[0] +","+ wayPoint[1] + "], ");
+		System.out.println("Path length: "+pathToStart.size());
+		for(int[] wayPointToStart : pathToStart){
+			System.out.print("[" +wayPointToStart[0] +","+ wayPointToStart[1] + "], ");
 		}
 		System.out.println();
-		ArrayList<int[]> newpath = planner.convertPathToWaypoints(path);
+		ArrayList<int[]> newpathToStart = plannerToStart.convertPathToWaypoints(pathToStart);
 		System.out.println();
 		System.out.println("new Path:");
-		System.out.println("Path length: "+newpath.size());
-		for(int[] wayPoint : newpath){
-			System.out.print("[" +wayPoint[0] +"," + wayPoint[1]+ "], ");
+		System.out.println("Path length: "+newpathToStart.size());
+		for(int[] wayPointToStart : newpathToStart){
+			System.out.print("[" +wayPointToStart[0] +"," + wayPointToStart[1]+ "], ");
 		}
 		System.out.println();
-		mapGridToStart.printMapWithPath(newpath);
+		mapGridToStart.printMapWithPath(newpathToStart);
 		System.out.println();
 		System.out.println();
 		
-		TestNavigation testnavigate = new TestNavigation();
-		testnavigate.testNavigateToStart(newpath, mapGridToStart.getCellSize());
+		TestNavigation testnavigateToStart = new TestNavigation();
+		testnavigateToStart.testNavigateToStart(newpathToStart, mapGridToStart.getCellSize());
+		
 		//Tested all maps and paths, all look good 
 	}
 }
@@ -918,7 +921,7 @@ class TestNavigation{
 		}
 	}
 	public void testNavigateToStart(ArrayList<int[]> path, float cellSize){
-		int[] previousVector = new int[]{0,8-9};
+		int[] previousVector = new int[]{0,9-8};
 		for(int i = 1; i < path.size(); ++i){
 			/*
 			int[] newVector = new int[]{path.get(i)[0]-path.get(i-1)[0],path.get(i)[1]-path.get(i-1)[1]};

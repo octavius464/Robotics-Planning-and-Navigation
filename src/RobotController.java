@@ -55,7 +55,7 @@ public class RobotController {
 		int initialMapIndex = 2;
 		
 		//MapGrid mapGrid = new MapGrid(new int[][] {{0,0,0,0},{0,1,1,0},{0,1,1,0},{0,0,0,0}},new int[]{0,0} ,new int[]{3,3});
-		MapGrid mapGrid = new MapGrid(initialMapIndex, new int[]{11,4} ,new int[]{1,8});
+		MapGrid mapGrid = new MapGrid(initialMapIndex, new int[]{12,3} ,new int[]{1,8});
 		System.out.println("Done initializing map");
 		AStarPlanner planner = new AStarPlanner(mapGrid.getStartingNode(), mapGrid.getGoalNode(), mapGrid.getMap());
 		System.out.println("Path planned");
@@ -70,7 +70,7 @@ public class RobotController {
 		
 		//Enter into cave, touch wall, make a beep sound, detect color, navigate out back to goal position
 		
-	    robot.rotateToGoal(new int[]{path.get(-1)[0]-path.get(-2)[0], path.get(-1)[1]-path.get(-2)[1]} );		
+	    robot.rotateToGoal(new int[]{path.get(path.size()-1)[0]-path.get(path.size()-2)[0], path.get(path.size()-1)[1]-path.get(path.size()-2)[1]} );		
 		robot.moveToWallAndBeep();
 		int colorAtWall = robot.getColorMeasurement();
 		int mapIndex = robot.getMapIndex(colorAtWall);
@@ -79,17 +79,17 @@ public class RobotController {
 
 		
 		//Navigate to starting point
-		/*
-		MapGrid mapGridToStart = new MapGrid(mapIndex, new int[]{1,8} ,new int[]{14,3});
+		
+		MapGrid mapGridToStart = new MapGrid(4, new int[]{1,8} ,new int[]{14,3});
 		System.out.println("Done initializing map");
 		AStarPlanner plannerToStart = new AStarPlanner(mapGridToStart.getStartingNode(), mapGridToStart.getGoalNode(), mapGridToStart.getMap());
 		System.out.println("Path planned");
 		ArrayList<int[]> pathToStart = plannerToStart.getPath();
-		ArrayList<int[]> wayPointsToStart = plannerToStart.convertPathToWaypoints(path); 
+		ArrayList<int[]> wayPointsToStart = plannerToStart.convertPathToWaypoints(pathToStart); 
 		System.out.println("Start navigating...");
 		robot.navigateToStart(wayPointsToStart,mapGridToStart.getCellSize());
 		System.out.println("Done navigating...");
-		*/
+		
 		
 	} //end of main
 	
@@ -101,7 +101,7 @@ class Robot {
 
 	static double WHEEL_RADIUS = 0.015;
 	int localizedPos;
-	float angleCorrection = 0.83f;
+	float angleCorrection = 0.93f;
 	EV3ColorSensor colorSensor;
 	
 	EV3GyroSensor gyroSensor;
@@ -249,7 +249,11 @@ class Robot {
 	}
 	
 	public void navigate(ArrayList<int[]> path, float cellSize, int[] previousVector){
+		mA.setSpeed(180);
+		mC.setSpeed(180);
 		for(int i = 1; i < path.size(); ++i){
+			gyroSensor.reset();
+			carOrientation = 0; 
 			System.out.println(carOrientation); 
 			int[] newVector = new int[]{path.get(i)[0]-path.get(i-1)[0],path.get(i)[1]-path.get(i-1)[1]};
 			float crossProduct = previousVector[0]*newVector[1]-previousVector[1]*newVector[0];
@@ -295,9 +299,7 @@ class Robot {
 			mA.stop();
 			mC.stop();
 			
-			mA.endSynchronization();
-			gyroSensor.reset();
-			carOrientation = 0; 
+			mA.endSynchronization(); 
 			
 		}
 	}
@@ -311,7 +313,7 @@ class Robot {
 	
 	public void navigateToStart(ArrayList<int[]> path, float cellSize){
 		System.out.println(carOrientation);
-		int[] previousVector = new int[]{0,8-9};
+		int[] previousVector = new int[]{0,9-8};
 		navigate(path, cellSize, previousVector);
 	}
 	
