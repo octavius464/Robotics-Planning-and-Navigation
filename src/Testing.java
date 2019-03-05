@@ -60,11 +60,12 @@ public class Testing {
 		
 		TestNavigation testnavigate = new TestNavigation();
 		testnavigate.testNavigateToGoal(newpath, mapGrid.getCellSize());
+		System.out.println("last second point: "+path.get(path.size()-2)[0]+","+path.get(path.size()-2)[1]);
+		System.out.println("last point: "+path.get(path.size()-1)[0]+","+path.get(path.size()-1)[1]);
+		testnavigate.testRotateToGoal(new int[]{path.get(path.size()-1)[0]-path.get(path.size()-2)[0], path.get(path.size()-1)[1]-path.get(path.size()-2)[1]} );
 		
 		
-		
-		
-		MapGrid mapGridToStart = new MapGrid(4, new int[]{1,8} ,new int[]{14,3});
+		MapGrid mapGridToStart = new MapGrid(3, new int[]{1,8} ,new int[]{14,3});
 		mapGridToStart.printMap();
 		
 		AStarPlanner1 plannerToStart = new AStarPlanner1(mapGridToStart.getStartingNode(), mapGridToStart.getGoalNode(), mapGridToStart.getMap());
@@ -951,4 +952,14 @@ class TestNavigation{
 			
 		}
 	}
+	public void testRotateToGoal(int[] previousVector){ //TODO test for robot
+		int[] newVector = new int[]{1-1,9-8};
+		float crossProduct = previousVector[0]*newVector[1]-previousVector[1]*newVector[0];
+		float dotProduct = previousVector[0]*newVector[0]+previousVector[1]*newVector[1];
+		float angleToRotate = (float) ((float) Math.atan2(crossProduct,dotProduct) * (180/Math.PI));
+		angleToRotate = (float) (angleToRotate);
+		
+		System.out.println("Angle to rotate to goal: "+angleToRotate );
+	}
+	
 }

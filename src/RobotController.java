@@ -20,7 +20,7 @@ public class RobotController {
 		Robot robot = new Robot();
 		Localization robotLocalization = new Localization(74); //multiples of 37
 		//each array distance is 1.7cm, so total length is 37*1.7=62.9cm
-		/*
+		
 		int localizedPos = -1;
 		int direction = 0; // 0:moving forward, 1:moving backward, move forward initially
 		
@@ -28,12 +28,13 @@ public class RobotController {
 		localizationLoop: while(true){		
 			for(int i=0;i<25;++i){ //moving for around 20cm forward and backward 
 				//Sense and update probabilities
-				int colorMeasurement = robot.getColorMeasurement();		//blue return 1, white return 0		
-				robotLocalization.updateAfterSensing2(colorMeasurement);
+				int colorObservation = robot.getColorObservation();		//blue return 1, white return 0		
+				robotLocalization.updateAfterSensing2(colorObservation);
 						
 				//Move robot and update probabilities
-				robot.moveToLocalize(direction);			
+				robot.moveToLocalize(direction);		//0:move forward, 1:move backward	
 				robotLocalization.updateAfterMoving(direction);
+				
 				System.out.println(robotLocalization.getLocalizedPosition());
 				if(robotLocalization.isDoneLocalizing()){
 					localizedPos = robotLocalization.getLocalizedPosition();
@@ -48,13 +49,12 @@ public class RobotController {
 		}
 		
 		Delay.msDelay(1000000);	
-		*/ 
-		
+		 
+		int[] startingNode = robot.mapLocToNode(localizedPos);
 		
 		//Path Planning
 		int initialMapIndex = 2;
 		
-		//MapGrid mapGrid = new MapGrid(new int[][] {{0,0,0,0},{0,1,1,0},{0,1,1,0},{0,0,0,0}},new int[]{0,0} ,new int[]{3,3});
 		MapGrid mapGrid = new MapGrid(initialMapIndex, new int[]{12,3} ,new int[]{1,8});
 		System.out.println("Done initializing map");
 		AStarPlanner planner = new AStarPlanner(mapGrid.getStartingNode(), mapGrid.getGoalNode(), mapGrid.getMap());
@@ -72,7 +72,7 @@ public class RobotController {
 		
 	    robot.rotateToGoal(new int[]{path.get(path.size()-1)[0]-path.get(path.size()-2)[0], path.get(path.size()-1)[1]-path.get(path.size()-2)[1]} );		
 		robot.moveToWallAndBeep();
-		int colorAtWall = robot.getColorMeasurement();
+		int colorAtWall = robot.getColorID();
 		int mapIndex = robot.getMapIndex(colorAtWall);
 		robot.moveBackToGoal();
 		
@@ -80,7 +80,7 @@ public class RobotController {
 		
 		//Navigate to starting point
 		
-		MapGrid mapGridToStart = new MapGrid(4, new int[]{1,8} ,new int[]{14,3});
+		MapGrid mapGridToStart = new MapGrid(mapIndex, new int[]{1,8} ,new int[]{14,3});
 		System.out.println("Done initializing map");
 		AStarPlanner plannerToStart = new AStarPlanner(mapGridToStart.getStartingNode(), mapGridToStart.getGoalNode(), mapGridToStart.getMap());
 		System.out.println("Path planned");
@@ -123,7 +123,6 @@ class Robot {
 		colorSensor = new EV3ColorSensor(SensorPort.S4);
 		gyroSensor = new EV3GyroSensor(SensorPort.S2);
 		touchSensor = new EV3TouchSensor(SensorPort.S1);
-		
 		gyroSensor.reset();
 		angleMode = gyroSensor.getAngleMode();
 		angleSample = new float[angleMode.sampleSize()];
@@ -144,7 +143,7 @@ class Robot {
 	 * Get the color measurement from the color sensor. If it is blue, then return 1, else return 0.
 	 * @return an int corresponding to blue or white;
 	 */
-	public int getColorMeasurement(){
+	public int getColorObservation(){
 		int measurement = colorSensor.getColorID();
 		if(measurement == 7){ //blue:7 , white:2
 			measurement = 1;
@@ -152,6 +151,10 @@ class Robot {
 			measurement = 0;
 		}
 		return measurement;
+	}
+	
+	public int getColorID(){ 
+		return colorSensor.getColorID();
 	}
 	
 	/**
@@ -180,6 +183,20 @@ class Robot {
 		mA.stop();
 		mC.stop();
 		mA.endSynchronization();
+	}
+	
+	public int[] mapLocToNode(int input){
+	  if( input >= 0.0 && input < 14.8){
+		   	 return new int[]{13, 2};
+		    }else if (input >= 14.8 && input < 29.6) {
+		   	 return new int[]{12, 3};
+		    }else if (input >= 29.6 && input < 44.4) {
+		   	 return new int[]{11, 4};
+		    }else if (input >= 44.4 && input < 59.2) {
+		   	 return new int[]{10, 5};
+		    }else {
+		   	 return new int[]{9, 6};
+		    }
 	}
 	
 	public void rotateToEntrance(){
@@ -226,7 +243,7 @@ class Robot {
 	
 	public void moveBackToGoal(){ //TODO measure distance of going back to goal position
 		double meterspersecond = 2.0*Math.PI*WHEEL_RADIUS/2.0;
-		double duration = (0.31 /meterspersecond) * 1000.0; //move forward 1.7cm/cell of the array each iteration
+		double duration = (0.23 /meterspersecond) * 1000.0; //move forward 1.7cm/cell of the array each iteration
 
 		mA.startSynchronization();
 		mA.setSpeed(180);
@@ -317,8 +334,8 @@ class Robot {
 		navigate(path, cellSize, previousVector);
 	}
 	
-	public int getMapIndex(int colorAtWall){ //TODO
-		if(colorAtWall == 3){
+	public int getMapIndex(int colorAtWall){ // red:0 green:7 black:7 
+		if(colorAtWall == 7){
 			return 3;
 		}else{
 			return 4;
@@ -337,11 +354,13 @@ class Robot {
 		}
 	}
 	public void rotateToGoal(int[] previousVector){ //TODO test for robot
+		gyroSensor.reset();
+		carOrientation = 0; 
 		int[] newVector = new int[]{1-1,9-8};
 		float crossProduct = previousVector[0]*newVector[1]-previousVector[1]*newVector[0];
 		float dotProduct = previousVector[0]*newVector[0]+previousVector[1]*newVector[1];
 		float angleToRotate = (float) ((float) Math.atan2(crossProduct,dotProduct) * (180/Math.PI));
-		angleToRotate = (float) (angleToRotate*angleCorrection);
+		//angleToRotate = (float) (angleToRotate*angleCorrection);
 		angleMode.fetchSample(angleSample, 0);
 		carOrientation = angleSample[angleMode.sampleSize() - 1];
 		mA.setSpeed(180);
@@ -381,7 +400,7 @@ class Localization {
 	float SensorWorkProb = (float) 0.9; //TODO
 	float PROB_MOVE_FORWARD = (float) 0.95; //TODO
 	float PROB_MOVE_BACKWARD = (float) 0.95; //TODO
-	float LOCALIZATION_THRESHOLD = (float) 0.5;
+	float LOCALIZATION_THRESHOLD = (float) 0.6; //recommended:0.5
 	
 	public Localization(int size){
 		this.size = size;
