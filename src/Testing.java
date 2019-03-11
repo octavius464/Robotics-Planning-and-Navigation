@@ -11,25 +11,45 @@ import java.util.Iterator;
 public class Testing {
 
 	public static void main(String args[]){
+		Localization1 robotLocalization = new Localization1(37); //multiples of 37
+		//each array distance is 1.7cm, so total length is 37*1.7=62.9cm
 		/*
-		Robot1 robot = new Robot1();
-		ArrayList<Integer> measurements = new ArrayList<>();
-		float sum=0;
-		float distance = 0.05f; 
-		float increment = 0.05f;
-		for(int i=0;i<10;++i){
-			robot.moveForward(distance);		
-			Delay.msDelay(10000);	
-		}	
-		
-		Delay.msDelay(100000);	
-		
-		while(true){
-			System.out.println(robot.getColorMeasurement());	
+		int localizedPos = -1;
+		int direction = 0; // 0:moving forward, 1:moving backward, move forward initially
+		int[] testObservation1 = new int[]{0,0,1,1,1,0,1,1,0,0,1,1,1,0,0,1,0,0,1,1,1,0,0,1,1,0};
+		int[] testObservation2 = new int[]{0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,0,0,0,0,0,1};
+		int[] testObservation3 = new int[]{0,0,0,0,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,0,0,1};
+		int[] testObservation4 = new int[]{0,0,1,1,1,0,1,1,0,0,1,1,1,0,0,1,0,0,1,1,1,0,0,1,1,0};
+		int[] testObservation6 = new int[]{0,0,1,1,1,0,0,1,1,1,0,1,0,0,0,1,0,0,1,1,0,1,1,1,0,0,1,1,1};
+		//Localization
+		robotLocalization.printDistribution();
+		localizationLoop: while(true){		
+			for(int i=1;i<=testObservation6.length;++i){ //moving for around 20cm forward and backward //25 times
+				//Sense and update probabilities
+				//int colorObservation = robot.getColorObservation();		//blue return 1, white return 0	
+				Delay.msDelay(100);		//TODO: see if needed
+				robotLocalization.updateAfterSensing2(testObservation6[i-1]);
+						
+				//Move robot and update probabilities
+				//robot.moveToLocalize(direction);		//0:move forward, 1:move backward	
+				robotLocalization.updateAfterMoving(direction);
+				robotLocalization.printDistribution();
+				System.out.println(robotLocalization.getLocalizedPosition());
+				if(robotLocalization.isDoneLocalizing()){
+					localizedPos = robotLocalization.getLocalizedPosition();
+				    System.out.println("done localizing: "+ localizedPos);
+					break localizationLoop;
+				}
+						
+					
+				if(i!=0 && i%25 == 0){
+					direction = ((direction == 0) ? 1 : 0);
+				}
+			}
+			
 		}
-		*/
 		
-
+		*/
 		
 		//MapGrid1 mapGrid = new MapGrid1(new int[][] {{0,0,0,0},{0,1,1,0},{0,1,1,0},{0,0,0,0}},new int[]{0,0} ,new int[]{3,3});
 		
@@ -65,7 +85,7 @@ public class Testing {
 		testnavigate.testRotateToGoal(new int[]{path.get(path.size()-1)[0]-path.get(path.size()-2)[0], path.get(path.size()-1)[1]-path.get(path.size()-2)[1]} );
 		
 		
-		MapGrid mapGridToStart = new MapGrid(3, new int[]{1,8} ,new int[]{14,3});
+		MapGrid1 mapGridToStart = new MapGrid1(4, new int[]{1,8} ,new int[]{14,3});
 		mapGridToStart.printMap();
 		
 		AStarPlanner1 plannerToStart = new AStarPlanner1(mapGridToStart.getStartingNode(), mapGridToStart.getGoalNode(), mapGridToStart.getMap());
@@ -96,6 +116,148 @@ public class Testing {
 	}
 }
 
+class Localization1 {
+	
+	float[] probabilityDistribution;
+	int size;
+	int[] grid;
+	float SensorWorkProb = (float) 0.95; //TODO
+	float PROB_MOVE_FORWARD = (float) 0.95; //TODO
+	float PROB_MOVE_BACKWARD = (float) 0.95; //TODO
+	float LOCALIZATION_THRESHOLD = (float) 0.5; //recommended:0.5
+	
+	public Localization1(int size){
+		this.size = size;
+		probabilityDistribution = new float[this.size];
+		grid = new int[this.size];
+		initializeProb();
+		initializeGrid();
+	}
+	
+	/**
+	 * To initialize the grid (sensor model) to store whether each index corresponds to having a blue
+	 * or white color. This refers to the line pattern.
+	 */
+	public void initializeGrid(){ 
+		// Pattern: 3.4cmWhite, 5.1cmBlue, 1.7W, 3.4B, 3.4W, 5.1B, 1.7W, 3.4B, 3.4W, 5.1B, 3.4W, 5.1B, 1.7W, 3.4B, 3.4W, 5.1B, 1.7W, 3.4B
+		int scalingFactor = size/37;
+		int[] pattern = {0,2,5,6,8,10,13,14,16,18,21,23,26,27,29,31,34,35,37};
+		for(int i=0;i<pattern.length;++i){
+			pattern[i] = pattern[i]*scalingFactor;
+		}
+		
+		int color = 0; //0:white , 1:blue
+		for(int n=0;n<pattern.length-1;++n){	
+			for(int i=pattern[n];i<pattern[n+1];++i){
+				grid[i] = color;
+			}
+			color = ((color == 0) ? 1 : 0);
+		}    
+	}
+	
+	/**
+	 * To initialize the probability distribution by having each index having the same probability
+	 * in the beginning.
+	 */
+	public void initializeProb(){
+		float initialProb =(float) 1.0/size;
+		for(int i=0; i<size; ++i){
+			probabilityDistribution[i] = initialProb;
+		}		
+	}
+	
+	public void updateAfterSensing(float[] observationLikelihood){
+		float normalizationFactor = 0;
+		for(int i=0; i<size; ++i){
+			probabilityDistribution[i] = observationLikelihood[i] * probabilityDistribution[i];
+			normalizationFactor = normalizationFactor + probabilityDistribution[i];			
+		}
+		for(int i=0; i<size; ++i){
+			probabilityDistribution[i] = probabilityDistribution[i]/normalizationFactor;		
+		}
+	}
+	
+	/**
+	 * Update the probability distribution after making an observation using robot sensors.
+	 * @param observation
+	 */
+	public void updateAfterSensing2(int observation){
+		float probSum = 0;
+		for(int i=0; i<size; ++i){
+			if(observation == grid[i]){
+				probabilityDistribution[i] = probabilityDistribution[i] * SensorWorkProb;
+			}else{
+				probabilityDistribution[i] = probabilityDistribution[i] * (1-SensorWorkProb);
+			}
+			probSum = probSum + probabilityDistribution[i];
+		}
+		for(int i=0; i<size; ++i){
+			probabilityDistribution[i] = probabilityDistribution[i]/probSum;
+		}
+	}
+	
+	/**
+	 * Update probability distribution after an action which is moving in this case.
+	 * @param direction
+	 */
+	public void updateAfterMoving(int direction){ 
+		if(direction == 0){ //moving forward
+			for(int i=1; i<size; ++i){		
+				probabilityDistribution[i] =(float) (probabilityDistribution[i-1]*PROB_MOVE_FORWARD + probabilityDistribution[i]*(1-PROB_MOVE_FORWARD));
+			}
+		}	
+		if(direction == 1){ //moving backward
+			for(int i=0; i<(size-1); ++i){		
+				probabilityDistribution[i] =(float) (probabilityDistribution[i+1]*PROB_MOVE_BACKWARD + probabilityDistribution[i]*(1-PROB_MOVE_BACKWARD));
+			}
+		}	
+	}
+	
+	/**
+	 * Check whether the robot is done localizing by checking whether any value of the array
+	 * is above the localization threshold.
+	 * @return
+	 */
+	public boolean isDoneLocalizing(){
+		for(int i=0; i<size; ++i){
+			if(probabilityDistribution[i] > LOCALIZATION_THRESHOLD){
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	/**
+	 * @return the index of the array lineMap with the highest probability. This corresponds to 
+	 * the localized position of the robot.  
+	 */
+	public int getLocalizedPosition(){
+		float max_prob = -1;
+		int mostLikelyPosition = 0;
+		for(int i=0; i<size; ++i){
+			if(probabilityDistribution[i] > max_prob){
+				max_prob = probabilityDistribution[i];
+				mostLikelyPosition = i;
+			}
+		}
+		return mostLikelyPosition;
+	}
+	
+	/**
+	 * for testing. Tested, initialized grid properly.
+	 */
+	public void printGrid(){
+		for(int i=0;i<size;++i){
+			System.out.print(grid[i]);
+		}
+	}
+	
+	public void printDistribution(){
+		for(int i=0;i<size;++i){
+			System.out.print(probabilityDistribution[i]+",");
+		}
+	}
+}
 
 class Robot1 {
 
@@ -677,14 +839,14 @@ class MapGrid1{
         	}
         }      
         if(index==3){
-        	for(int n=-1;n<2; ++n){
+        	for(int n=-1;n<3; ++n){
 		        for(int i=6; i<11; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
 		        	map[i+n][i] = 1;
 		        }
         	}
         }    
         if(index==4){
-        	for(int n=-1;n<2; ++n){
+        	for(int n=-1;n<3; ++n){
 		        for(int i=6; i<12; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
 		        	map[i+n][i] = 1;
 		        }
