@@ -1,3 +1,4 @@
+import lejos.hardware.Button;
 import lejos.hardware.Sound;
 import lejos.hardware.motor.EV3LargeRegulatedMotor;
 import lejos.hardware.port.MotorPort;
@@ -23,13 +24,22 @@ public class RobotController {
 		
 		int localizedPos = -1;
 		int direction = 0; // 0:moving forward, 1:moving backward, move forward initially
+		int initialMapIndex = 2;
+		
+		while(true){
+			System.out.println("Press any button");
+			int buttonpressed = Button.waitForAnyPress();
+			if(buttonpressed == 1 || buttonpressed == 2 || buttonpressed == 4 || buttonpressed == 8 || buttonpressed == 16){
+				break;
+			}
+		}
 		
 		//Localization
 		localizationLoop: while(true){		
 			for(int i=0;i<15;++i){ //moving for around 20cm forward and backward 
 				//Sense and update probabilities
 				int colorObservation = robot.getColorObservation();		//blue return 1, white return 0	
-				Delay.msDelay(150);		//TODO: see if needed
+				Delay.msDelay(150);	
 				System.out.print(colorObservation);
 				robotLocalization.updateAfterSensing2(colorObservation);
 						
@@ -55,10 +65,9 @@ public class RobotController {
 		int[] startingNode = robot.mapLocToNode(localizedPos);
 		
 		//Path Planning
-		int initialMapIndex = 1;
-		
 		//MapGrid mapGrid = new MapGrid(initialMapIndex, new int[]{12,3} ,new int[]{1,8});
 		MapGrid mapGrid = new MapGrid(initialMapIndex, startingNode ,new int[]{1,8});
+		mapGrid.updateMapAfterLocalized(startingNode);
 		System.out.println("Done initializing map");
 		AStarPlanner planner = new AStarPlanner(mapGrid.getStartingNode(), mapGrid.getGoalNode(), mapGrid.getMap());
 		System.out.println("Path planned");
@@ -94,6 +103,8 @@ public class RobotController {
 		System.out.println("Start navigating...");
 		robot.navigateToStart(wayPointsToStart,mapGridToStart.getCellSize());
 		System.out.println("Done navigating...");
+		
+		robot.moveForward(); //move forward until it touches the wall
 		
 		
 	} //end of main
@@ -189,19 +200,6 @@ class Robot {
 	}
 	
 	public int[] mapLocToNode(int input){
-		/*
-	  if( input >= 0.0 && input < 14.8){
-		 return new int[]{13, 2};
-	  }else if (input >= 14.8 && input < 29.6) {
-		 return new int[]{12, 3};
-	  }else if (input >= 29.6 && input < 44.4) {
-		 return new int[]{11, 4};
-	  }else if (input >= 44.4 && input < 59.2) {
-		 return new int[]{10, 5};
-	  }else {
-		 return new int[]{9, 6};
-	  }
-	  */
 	  float inputf = (float) input;
 		if( inputf >= 0.0 && inputf < 7.9){
 			 return new int[]{13, 2};
@@ -258,7 +256,7 @@ class Robot {
 		mA.endSynchronization();
 	}
 	
-	public void moveBackToGoal(){ //TODO measure distance of going back to goal position
+	public void moveBackToGoal(){ 
 		double meterspersecond = 2.0*Math.PI*WHEEL_RADIUS/2.0;
 		double duration = (0.20 /meterspersecond) * 1000.0; //move forward 1.7cm/cell of the array each iteration
 
@@ -405,6 +403,17 @@ class Robot {
 		mC.stop();
 		mA.endSynchronization();
 	}
+	
+	public void moveForward(){
+		mA.setSpeed(180);
+		mC.setSpeed(180);		
+		mA.forward();
+		mC.forward();
+		
+		Delay.msDelay(30000);
+	}
+	
+	
 }
 
 
@@ -535,15 +544,6 @@ class Localization {
 		}
 		return mostLikelyPosition;
 	}
-	
-	/**
-	 * for testing. Tested, initialized grid properly.
-	 */
-	public void printGrid(){
-		for(int i=0;i<size;++i){
-			System.out.print(grid[i]);
-		}
-	}
 }
 
 class AStarPlanner{
@@ -558,6 +558,7 @@ class AStarPlanner{
 	HashMap<int[],int[]> mapNodeToParent = new HashMap<>();
 	HashMap<int[], ArrayList<int[]>> mapNodeToNeighbours = new HashMap<>();
 	HashMap<int[], float[]> mapNodeToGnHnFn = new HashMap<>();
+	int DIAGONAL_COST = 2;
 	
 	public AStarPlanner(int[] startingNode, int[] goalNode, int[][] map2DGrid){
 		this.startingNode = startingNode;
@@ -712,7 +713,7 @@ class AStarPlanner{
 	
 	private float calculateFn(int[] parent, int[] child){
 		float parentGn = getNodeGn(parent);
-		float childGn = parentGn + 1;
+		float childGn = parentGn+1;
 		float childHn = calculateHn(child);
 		float childFn = childGn + childHn;
 		return childFn;
@@ -720,7 +721,7 @@ class AStarPlanner{
 	
 	private float[] calculateGnHnFn(int[] parent, int[] child){
 		float parentGn = getNodeGn(parent);
-		float childGn = parentGn + 1;
+		float childGn = parentGn+1;
 		float childHn = calculateHn(child);
 		float childFn = childGn + childHn;
 		float[] newScores = {childGn,childHn,childFn};
@@ -982,14 +983,16 @@ class MapGrid{
         }      
         if(index==3){
         	for(int n=-1;n<3; ++n){
-		        for(int i=6; i<11; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
+        		//originally i<11
+		        for(int i=6; i<10; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
 		        	map[i+n][i] = 1;
 		        }
         	}
         }    
         if(index==4){
         	for(int n=-1;n<3; ++n){
-		        for(int i=6; i<12; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
+        		//originally i<12
+		        for(int i=6; i<11; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
 		        	map[i+n][i] = 1;
 		        }
         	}
@@ -1005,11 +1008,26 @@ class MapGrid{
         }
         if(index==3){
 	        //one round obstacle on the left when returning
-	        map[12][12] = 1;
+	        //map[12][12] = 1;
+        	map[11][11] = 1;
         }
         if(index==4){
 	        //one round obstacle on the right when returning
-	        map[13][13] = 1;
+	        //map[13][13] = 1;
+	        map[12][12] = 1;
+        }
+        //wall
+        for(int i=0;i<xMAX;++i){
+        	map[0][i]=1;
+        }
+        for(int i=0;i<xMAX;++i){
+        	map[15][i]=1;
+        }
+        for(int i=0;i<yMAX;++i){
+        	map[i][0]=1;
+        }
+        for(int i=0;i<yMAX;++i){
+        	map[i][15]=1;
         }
     }
 	
@@ -1029,25 +1047,8 @@ class MapGrid{
 		return startingNode;
 	}
 	
-	public void printMap(){
-		for(int y=(yMAX-1); y>-1; --y){
-			for(int x=0; x<xMAX; ++x){
-				System.out.print(map[y][x]);;
-			}
-			System.out.println();
-		}	
-	}
-	
-	public void printMapWithPath(ArrayList<int[]> path){
-		for(int[] point:path){
-			map[point[1]][point[0]]=2;
-		}
-		for(int y=(yMAX-1); y>-1; --y){
-			for(int x=0; x<xMAX; ++x){
-				System.out.print(map[y][x]);;
-			}
-			System.out.println();
-		}	
+	public void updateMapAfterLocalized(int[] localizedPos){ //TODO test for robot
+		map[localizedPos[1]+1][localizedPos[0]-2] = 1;
 	}
 }
 
