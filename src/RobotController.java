@@ -36,7 +36,7 @@ public class RobotController {
 		
 		//Localization
 		localizationLoop: while(true){		
-			for(int i=0;i<15;++i){ //moving for around 20cm forward and backward 
+			for(int i=0;i<19;++i){ //moving for around 20cm forward and backward 
 				//Sense and update probabilities
 				int colorObservation = robot.getColorObservation();		//blue return 1, white return 0	
 				Delay.msDelay(150);	
@@ -117,7 +117,7 @@ class Robot {
 
 	static double WHEEL_RADIUS = 0.015;
 	int localizedPos;
-	float angleCorrection = 0.88f;
+	float angleCorrection = 0.85f; //0.88f works occassionally
 	EV3ColorSensor colorSensor;
 	
 	EV3GyroSensor gyroSensor;
@@ -284,6 +284,8 @@ class Robot {
 		mA.setSpeed(180);
 		mC.setSpeed(180);
 		for(int i = 1; i < path.size(); ++i){
+			mA.setSpeed(180);
+			mC.setSpeed(180);
 			gyroSensor.reset();
 			carOrientation = 0; 
 			System.out.println(carOrientation); 
@@ -319,7 +321,7 @@ class Robot {
 			mA.stop();
 			mC.stop();
 			mA.endSynchronization();
-			//Delay.msDelay(10000);
+			
 			mA.startSynchronization();
 			mA.setSpeed(180);
 			mC.setSpeed(180);		
@@ -423,10 +425,11 @@ class Localization {
 	float[] probabilityDistribution;
 	int size;
 	int[] grid;
-	float SensorWorkProb = (float) 0.95; //TODO
-	float PROB_MOVE_FORWARD = (float) 0.95; //TODO
-	float PROB_MOVE_BACKWARD = (float) 0.95; //TODO
-	float LOCALIZATION_THRESHOLD = (float) 0.5; //recommended:0.5
+	float SensorWorkProb = (float) 0.95; //TODO 0.95
+	float PROB_MOVE_FORWARD = (float) 0.9; //TODO 0.95
+	float PROB_MOVE_BACKWARD = (float) 0.9; //TODO 0.95
+	float LOCALIZATION_THRESHOLD = (float) 0.6; //recommended:0.5
+	// 0.9,0.8,0.5 is good but takes long
 	
 	public Localization(int size){
 		this.size = size;
@@ -468,22 +471,11 @@ class Localization {
 		}		
 	}
 	
-	public void updateAfterSensing(float[] observationLikelihood){
-		float normalizationFactor = 0;
-		for(int i=0; i<size; ++i){
-			probabilityDistribution[i] = observationLikelihood[i] * probabilityDistribution[i];
-			normalizationFactor = normalizationFactor + probabilityDistribution[i];			
-		}
-		for(int i=0; i<size; ++i){
-			probabilityDistribution[i] = probabilityDistribution[i]/normalizationFactor;		
-		}
-	}
-	
 	/**
 	 * Update the probability distribution after making an observation using robot sensors.
 	 * @param observation
 	 */
-	public void updateAfterSensing2(int observation){
+	public void updateAfterSensing2(int observation){ //TODO
 		float probSum = 0;
 		for(int i=0; i<size; ++i){
 			if(observation == grid[i]){
@@ -502,17 +494,32 @@ class Localization {
 	 * Update probability distribution after an action which is moving in this case.
 	 * @param direction
 	 */
-	public void updateAfterMoving(int direction){ 
+	public void updateAfterMoving(int direction){ //TODO
+		float probSum = 0;
 		if(direction == 0){ //moving forward
-			for(int i=1; i<size; ++i){		
-				probabilityDistribution[i] =(float) (probabilityDistribution[i-1]*PROB_MOVE_FORWARD + probabilityDistribution[i]*(1-PROB_MOVE_FORWARD));
+			for(int i=0; i<size; ++i){	
+				if(i==0){
+					probabilityDistribution[i] =(float)probabilityDistribution[i]*(1-PROB_MOVE_FORWARD);
+				}else{
+					probabilityDistribution[i] =(float) (probabilityDistribution[i-1]*PROB_MOVE_FORWARD + probabilityDistribution[i]*(1-PROB_MOVE_FORWARD));
+				}
+				probSum = probSum + probabilityDistribution[i];
 			}
 		}	
 		if(direction == 1){ //moving backward
-			for(int i=0; i<(size-1); ++i){		
-				probabilityDistribution[i] =(float) (probabilityDistribution[i+1]*PROB_MOVE_BACKWARD + probabilityDistribution[i]*(1-PROB_MOVE_BACKWARD));
+			for(int i=0; i<size; ++i){
+				if(i==size-1){
+					probabilityDistribution[i] =(float) probabilityDistribution[i]*(1-PROB_MOVE_BACKWARD);
+				}else{
+					probabilityDistribution[i] =(float) (probabilityDistribution[i+1]*PROB_MOVE_BACKWARD + probabilityDistribution[i]*(1-PROB_MOVE_BACKWARD));
+				}
+				probSum = probSum + probabilityDistribution[i];
 			}
-		}	
+		}
+		for(int i=0; i<size; ++i){
+			probabilityDistribution[i] = probabilityDistribution[i]/probSum;
+		}
+		
 	}
 	
 	/**
