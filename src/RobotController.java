@@ -15,17 +15,16 @@ import java.util.Iterator;
 
 
 public class RobotController {
-	
+	static int initialMapIndex = 1;
 	public static void main(String args[]){
 		
-		Robot robot = new Robot();
+		Robot robot = new Robot(initialMapIndex);
 		Localization robotLocalization = new Localization(37); //multiples of 37
 		//each array distance is 1.7cm, so total length is 37*1.7=62.9cm
 		
 		int localizedPos = -1;
 		int direction = 0; // 0:moving forward, 1:moving backward, move forward initially
-		int initialMapIndex = 2;
-		
+	
 		while(true){
 			System.out.println("Press any button");
 			int buttonpressed = Button.waitForAnyPress();
@@ -33,7 +32,7 @@ public class RobotController {
 				break;
 			}
 		}
-		
+				
 		//Localization
 		localizationLoop: while(true){		
 			for(int i=0;i<19;++i){ //moving for around 20cm forward and backward 
@@ -52,21 +51,23 @@ public class RobotController {
 					System.out.println();
 				    System.out.println("done localizing: "+ localizedPos);
 					break localizationLoop;
-				}
-						
-					
+				}				
 			}
 			direction = ((direction == 0) ? 1 : 0);
 			System.out.println(" ");
-		}
-		
-		//Delay.msDelay(1000000);	
+		}	
 		
 		int[] startingNode = robot.mapLocToNode(localizedPos);
+		int[] goalForInital;
+		if(initialMapIndex == 1){
+		  goalForInital = new int[]{1,8};
+		}else{
+			goalForInital = new int[]{1,8};
+		}
 		
 		//Path Planning
 		//MapGrid mapGrid = new MapGrid(initialMapIndex, new int[]{12,3} ,new int[]{1,8});
-		MapGrid mapGrid = new MapGrid(initialMapIndex, startingNode ,new int[]{1,8});
+		MapGrid mapGrid = new MapGrid(initialMapIndex, startingNode ,goalForInital); //TODO startingNOde
 		mapGrid.updateMapAfterLocalized(startingNode);
 		System.out.println("Done initializing map");
 		AStarPlanner planner = new AStarPlanner(mapGrid.getStartingNode(), mapGrid.getGoalNode(), mapGrid.getMap());
@@ -77,24 +78,24 @@ public class RobotController {
 		//Navigate to goal
 		robot.navigateToGoal(wayPoints,mapGrid.getCellSize());
 		System.out.println("Done navigating...");
-	
-		
-		
-		//Enter into cave, touch wall, make a beep sound, detect color, navigate out back to goal position
-		
-	    robot.rotateToGoal(new int[]{path.get(path.size()-1)[0]-path.get(path.size()-2)[0], path.get(path.size()-1)[1]-path.get(path.size()-2)[1]} );		
+			
+		//Enter into cave, touch wall, make a beep sound, detect color, navigate out back to goal position	
+	    robot.rotateAfterPathFollowing(new int[]{path.get(path.size()-1)[0]-path.get(path.size()-2)[0], path.get(path.size()-1)[1]-path.get(path.size()-2)[1]}, new int[]{1-1,9-8} );		
 		robot.moveToWallAndBeep();
 		int colorAtWall = robot.getColorID();
 		Delay.msDelay(150);
-		int mapIndex = robot.getMapIndex(colorAtWall);
-		System.out.println(mapIndex);
+		int mapIndexForReturn = robot.getMapIndex(colorAtWall);
+		System.out.println(mapIndexForReturn);
 		robot.moveBackToGoal();
-		
-
-		
+			
 		//Navigate to starting point
-		
-		MapGrid mapGridToStart = new MapGrid(mapIndex, new int[]{1,8} ,new int[]{14,3});
+		int[] goalForStart; 
+		if(mapIndexForReturn == 3){
+			goalForStart = new int[]{12,7};
+		}else{
+			goalForStart = new int[]{13,3};
+		}	
+		MapGrid mapGridToStart = new MapGrid(mapIndexForReturn, new int[]{1,8} ,goalForStart);
 		System.out.println("Done initializing map");
 		AStarPlanner plannerToStart = new AStarPlanner(mapGridToStart.getStartingNode(), mapGridToStart.getGoalNode(), mapGridToStart.getMap());
 		System.out.println("Path planned");
@@ -103,7 +104,9 @@ public class RobotController {
 		System.out.println("Start navigating...");
 		robot.navigateToStart(wayPointsToStart,mapGridToStart.getCellSize());
 		System.out.println("Done navigating...");
-		
+		if(mapIndexForReturn == 3){ //TODO
+			robot.rotateAfterPathFollowing(new int[]{pathToStart.get(pathToStart.size()-1)[0]-pathToStart.get(pathToStart.size()-2)[0], pathToStart.get(pathToStart.size()-1)[1]-pathToStart.get(pathToStart.size()-2)[1]},new int[]{14-12,3-7});
+		}
 		robot.moveForward(); //move forward until it touches the wall
 		
 		
@@ -111,13 +114,12 @@ public class RobotController {
 	
 }
 
-
-
 class Robot {
 
 	static double WHEEL_RADIUS = 0.015;
 	int localizedPos;
-	float angleCorrection = 0.85f; //0.88f works occassionally
+	float angleCorrection = 0.83f; //0.88f works occassionally
+	float angleCorrectionBack = 0.75f;
 	EV3ColorSensor colorSensor;
 	
 	EV3GyroSensor gyroSensor;
@@ -133,7 +135,10 @@ class Robot {
 	RegulatedMotor mA;
 	RegulatedMotor mC;
 	
-	public Robot(){
+	public Robot(int initialMapIndex){
+		if(initialMapIndex==1){
+			angleCorrection = 0.85f;
+		}
 		colorSensor = new EV3ColorSensor(SensorPort.S4);
 		gyroSensor = new EV3GyroSensor(SensorPort.S2);
 		touchSensor = new EV3TouchSensor(SensorPort.S1);
@@ -214,26 +219,6 @@ class Robot {
 		  }
 	}
 	
-	public void rotateToEntrance(){
-		angleMode.fetchSample(angleSample, 0);
-		carOrientation = angleSample[angleMode.sampleSize() - 1];
-		//mA.startSynchronization();
-		mA.setSpeed(180);
-		mC.setSpeed(180);
-		while(!(carOrientation > -46.9) || !(carOrientation < -45.1)){
-			mA.forward();
-			mC.backward();
-			angleMode.fetchSample(angleSample, 0);
-			carOrientation = angleSample[angleMode.sampleSize() - 1];
-			System.out.println(carOrientation);
-		}
-		//mA.endSynchronization();
-		mA.startSynchronization();
-		mA.stop();
-		mC.stop();
-		mA.endSynchronization();
-	}
-	
 	public void moveToWallAndBeep(){
 		touchMode.fetchSample(touchSample, 0);
 		measuredTouch = touchSample[touchMode.sampleSize() - 1];
@@ -295,12 +280,11 @@ class Robot {
 			float angleToRotate = (float) ((float) Math.atan2(crossProduct,dotProduct) * (180/Math.PI));
 			angleToRotate = (float) (angleToRotate*angleCorrection);
 			double distanceToTravel = Math.sqrt( Math.pow(path.get(i)[0]-path.get(i-1)[0],2) + Math.pow(path.get(i)[1]-path.get(i-1)[1],2) ) * cellSize; //in meters
-		    
 			previousVector = newVector;
 			double meterspersecond = 2.0*Math.PI*WHEEL_RADIUS/2.0;
 			double duration = (distanceToTravel /meterspersecond) * 1000.0;
 			if(angleToRotate>0){
-				while(carOrientation < angleToRotate){ 
+				while(carOrientation <= angleToRotate){ 
 					mA.backward();
 					mC.forward();
 					angleMode.fetchSample(angleSample, 0);
@@ -308,7 +292,7 @@ class Robot {
 					System.out.println(carOrientation);
 				}
 			}else{
-				while(carOrientation > angleToRotate){
+				while(carOrientation >= angleToRotate){
 					mA.forward();
 					mC.backward();
 					angleMode.fetchSample(angleSample, 0);
@@ -334,7 +318,6 @@ class Robot {
 			mC.stop();
 			
 			mA.endSynchronization(); 
-			//Delay.msDelay(30000);
 		}
 	}
 	
@@ -359,21 +342,9 @@ class Robot {
 		}
 	}
 	
-	public void testrotate(){
-		mA.setSpeed(180);
-		mC.setSpeed(180); 
-		while(carOrientation > 45){
-			mA.forward();
-			mC.backward();
-			angleMode.fetchSample(angleSample, 0);
-			carOrientation = angleSample[angleMode.sampleSize() - 1];
-			System.out.println(carOrientation);
-		}
-	}
-	public void rotateToGoal(int[] previousVector){ //TODO test for robot
+	public void rotateAfterPathFollowing(int[] previousVector,int[] newVector){ 
 		gyroSensor.reset();
 		carOrientation = 0; 
-		int[] newVector = new int[]{1-1,9-8};
 		float crossProduct = previousVector[0]*newVector[1]-previousVector[1]*newVector[0];
 		float dotProduct = previousVector[0]*newVector[0]+previousVector[1]*newVector[1];
 		float angleToRotate = (float) ((float) Math.atan2(crossProduct,dotProduct) * (180/Math.PI));
@@ -406,30 +377,26 @@ class Robot {
 		mA.endSynchronization();
 	}
 	
+
 	public void moveForward(){
 		mA.setSpeed(180);
 		mC.setSpeed(180);		
 		mA.forward();
 		mC.forward();
-		
 		Delay.msDelay(30000);
 	}
-	
-	
 }
 
 
 
-class Localization {
-	
+class Localization {	
 	float[] probabilityDistribution;
 	int size;
 	int[] grid;
-	float SensorWorkProb = (float) 0.95; //TODO 0.95
-	float PROB_MOVE_FORWARD = (float) 0.9; //TODO 0.95
-	float PROB_MOVE_BACKWARD = (float) 0.9; //TODO 0.95
+	float SensorWorkProb = (float) 0.95; 
+	float PROB_MOVE_FORWARD = (float) 0.9; 
+	float PROB_MOVE_BACKWARD = (float) 0.9; 
 	float LOCALIZATION_THRESHOLD = (float) 0.6; //recommended:0.5
-	// 0.9,0.8,0.5 is good but takes long
 	
 	public Localization(int size){
 		this.size = size;
@@ -475,7 +442,7 @@ class Localization {
 	 * Update the probability distribution after making an observation using robot sensors.
 	 * @param observation
 	 */
-	public void updateAfterSensing2(int observation){ //TODO
+	public void updateAfterSensing2(int observation){ 
 		float probSum = 0;
 		for(int i=0; i<size; ++i){
 			if(observation == grid[i]){
@@ -494,7 +461,7 @@ class Localization {
 	 * Update probability distribution after an action which is moving in this case.
 	 * @param direction
 	 */
-	public void updateAfterMoving(int direction){ //TODO
+	public void updateAfterMoving(int direction){
 		float probSum = 0;
 		if(direction == 0){ //moving forward
 			for(int i=0; i<size; ++i){	
@@ -565,7 +532,6 @@ class AStarPlanner{
 	HashMap<int[],int[]> mapNodeToParent = new HashMap<>();
 	HashMap<int[], ArrayList<int[]>> mapNodeToNeighbours = new HashMap<>();
 	HashMap<int[], float[]> mapNodeToGnHnFn = new HashMap<>();
-	int DIAGONAL_COST = 2;
 	
 	public AStarPlanner(int[] startingNode, int[] goalNode, int[][] map2DGrid){
 		this.startingNode = startingNode;
@@ -975,7 +941,7 @@ class MapGrid{
         
         //mid obstacle
         if(index==1){
-        	for(int n=-1;n<2; ++n){
+        	for(int n=-2;n<2; ++n){
 		        for(int i=4; i<10; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
 		        	map[i+n][i] = 1;
 		        }
@@ -990,19 +956,17 @@ class MapGrid{
         }      
         if(index==3){
         	for(int n=-1;n<3; ++n){
-        		//originally i<11
-		        for(int i=6; i<10; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
+		        for(int i=6; i<9; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
 		        	map[i+n][i] = 1;
 		        }
         	}
         }    
         if(index==4){
         	for(int n=-1;n<3; ++n){
-        		//originally i<12
-		        for(int i=6; i<11; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
+		        for(int i=6; i<10; ++i){ //i=9 for the actual obstacle, extended to make robot move past close to obstacle
 		        	map[i+n][i] = 1;
 		        }
-        	}
+        	} 	
         }  
         //round obstacle
         if(index==1){
@@ -1014,13 +978,9 @@ class MapGrid{
 	        map[3][3] = 1;
         }
         if(index==3){
-	        //one round obstacle on the left when returning
-	        //map[12][12] = 1;
         	map[11][11] = 1;
         }
         if(index==4){
-	        //one round obstacle on the right when returning
-	        //map[13][13] = 1;
 	        map[12][12] = 1;
         }
         //wall
@@ -1054,7 +1014,7 @@ class MapGrid{
 		return startingNode;
 	}
 	
-	public void updateMapAfterLocalized(int[] localizedPos){ //TODO test for robot
+	public void updateMapAfterLocalized(int[] localizedPos){ 
 		map[localizedPos[1]+1][localizedPos[0]-2] = 1;
 	}
 }
