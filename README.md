@@ -4,7 +4,7 @@ This is a robotics group project about implementing a robotics system under the 
 
 1.Localization to find its current location on the map<br/> ![Farmers Market Finder Demo](bin/gif.gif) <br/>
 <br/>
-2.Conduct A* search to plan a path from localized point to the goal position <br/>
+2.Conduct A* search to plan a path from localized point to the goal position while avoiding obstacles on the map<br/>
 <br/>
 3.Path Navigation according to planned path <br/> ![Farmers Market Finder Demo](bin/robot_navigation.gif) <br/>
 <br/>
