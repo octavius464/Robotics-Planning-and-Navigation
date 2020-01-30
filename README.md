@@ -7,7 +7,7 @@ This is a robot implemented under the LEJOS EV3 platform written in Java. The ma
 3.Path Navigation according to planned path <br/> ![Farmers Market Finder Demo](bin/robot_navigation.gif) <br/>
 4.Enter into the U-shaped box <br/> ![Farmers Market Finder Demo](bin/enter.gif) <br/>
 5.Move until it touches the wall and make a beep sound<br/>
-6.Move back out from the U-shaped box to the previous goal point 
+6.Move back out from the U-shaped box to the previous goal point <br/>
 7.A* search again to plan a path from that goal point back to original starting position<br/>
 8.Path Navigation according to planned path <br/> ![Farmers Market Finder Demo](bin/leave.gif) <br/>
 
