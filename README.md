@@ -12,3 +12,5 @@ This is a robot implemented under the LEJOS EV3 platform written in Java. The ma
 7.Path Navigation according to planned path
 
 <a href="https://www.youtube.com/watch?v=RvMfIgPz6fQ&feature=youtu.be" title="Link Title"><img src="{image-url}" alt="Here is a demo of the robot" /></a>
+
+[![Watch the video](https://www.youtube.com/watch?v=RvMfIgPz6fQ&feature=youtu.be/maxresdefault.jpg)](https://www.youtube.com/watch?v=RvMfIgPz6fQ&feature=youtu.be)
