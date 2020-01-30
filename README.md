@@ -1,6 +1,6 @@
 # Robotics Localization, Planning and Navigation
 
-This is a robot implemented under the LEJOS EV3 platform written in Java. The main function can be found under the RobotController.java. All classes are implemented in the same file due to the single file upload limitation of the LEJOS platform. The sequence of tasks it can perform is as follows:
+This is a robotics group project about implementing a robotics system under the LEJOS EV3 platform written in Java. The main function can be found under the RobotController.java. All classes are implemented in the same file due to the single file upload limitation of the LEJOS platform. The sequence of tasks it can perform is as follows:
 
 1.Localization <br/> ![Farmers Market Finder Demo](bin/gif.gif) <br/>
 2.Conduct A* search to plan a path from localized point to the goal position <br/>
