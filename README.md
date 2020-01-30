@@ -2,7 +2,7 @@
 
 This is a robotics group project about implementing a robotics system under the LEJOS EV3 platform written in Java. The main function can be found under the RobotController.java. All classes are implemented in the same file due to the single file upload limitation of the LEJOS platform. The sequence of tasks it can perform is as follows:
 
-1.Localization <br/> ![Farmers Market Finder Demo](bin/gif.gif) <br/>
+1.Localization to find its current location on the map<br/> ![Farmers Market Finder Demo](bin/gif.gif) <br/>
 2.Conduct A* search to plan a path from localized point to the goal position <br/>
 3.Path Navigation according to planned path <br/> ![Farmers Market Finder Demo](bin/robot_navigation.gif) <br/>
 4.Enter into the U-shaped box <br/> ![Farmers Market Finder Demo](bin/enter.gif) <br/>
