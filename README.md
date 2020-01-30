@@ -13,4 +13,4 @@ This is a robot implemented under the LEJOS EV3 platform written in Java. The ma
 
 <a href="https://www.youtube.com/watch?v=RvMfIgPz6fQ&feature=youtu.be" title="Link Title"><img src="{image-url}" alt="Here is a demo of the robot" /></a>
 
-
+[![Demo CountPages alpha](https://gifs.com/?source=https://www.youtube.com/watch?v=RvMfIgPz6fQ&feature=youtu.be](https://www.youtube.com/watch?v=RvMfIgPz6fQ&feature=youtu.be)
