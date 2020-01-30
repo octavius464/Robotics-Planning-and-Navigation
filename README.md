@@ -14,7 +14,7 @@ This is a robotics group project about implementing a robotics system under the 
 <br/>
 6.Move back out from the U-shaped box to the previous goal point <br/>
 <br/>
-7.Conduct A* search again to plan a path from that goal point back to original starting position<br/>
+7.Conduct A* search again to plan a path from that goal point back to original starting position while avoiding obstacles on the map<br/>
 <br/>
 8.Path Navigation according to planned path <br/> ![Farmers Market Finder Demo](bin/leave.gif) <br/>
 <br/>
